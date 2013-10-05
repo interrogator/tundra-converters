@@ -30,6 +30,7 @@ import eu.clarin.weblicht.wlfxb.tc.api.*;
 import eu.clarin.weblicht.wlfxb.tc.xb.*;
 import eu.clarin.weblicht.wlfxb.xb.WLData;
 import eu.clarin.weblicht.wlfxb.tc.xb.LemmasLayerStored;
+import java.io.FileOutputStream;
 
 public class TCFconverter {
 	private static final String HELP = 
@@ -153,7 +154,7 @@ public class TCFconverter {
 		//getTextValue() 
 		oldInd = 0;
 		curInd = 0; // start index for indexOf in getTextValue()
-		out = new BufferedWriter(new FileWriter(fileNameOut));
+		out = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(fileNameOut), "UTF-8"));
 		// hash map with ids of governing tokens (keys) and 
 		// DepNodes of governed tokens (values)
 		dependencyHashMap = null; 
