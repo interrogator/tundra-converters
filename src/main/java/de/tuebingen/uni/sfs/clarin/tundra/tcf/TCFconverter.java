@@ -104,7 +104,7 @@ public class TCFconverter {
 		// get necessary annotation layers
 		text = tc.getTextLayer().getText();
 		ll = tc.getLemmasLayer();
-		ml = tc.getMorphologyLayer();
+		ml = null; //tc.getMorphologyLayer(); skipping morph until I can debug
 		ptl = tc.getPosTagsLayer();
 		if (constituencyTree) {
 			cpl = tc.getConstituentParsingLayer();
@@ -172,7 +172,7 @@ public class TCFconverter {
 		// get necessary annotation layers
 		text = tc.getTextLayer().getText();
 		ll = tc.getLemmasLayer();
-		ml = tc.getMorphologyLayer();
+		ml = null; //tc.getMorphologyLayer(); skipping morph until I can debug
 		ptl = tc.getPosTagsLayer();
 		if (constituencyTree) {
 			cpl = tc.getConstituentParsingLayer();
@@ -242,6 +242,8 @@ public class TCFconverter {
 		num += 1;
 		curSent.append(formatAttr("start", Integer.toString(root.getStart())));
 		curSent.append(formatAttr("finish", Integer.toString(root.getFinish())));
+                //added to deal with root bug in 7.2 
+                curSent.append(formatAttr("_root", "true"));
 		curSent.append(">\n");
 
 		for (DepNode dp: root.getChildren()) {
