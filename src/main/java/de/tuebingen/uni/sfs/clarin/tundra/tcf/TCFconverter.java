@@ -16,7 +16,6 @@ package de.tuebingen.uni.sfs.clarin.tundra.tcf;
 
 import java.io.BufferedWriter;
 import java.io.FileInputStream;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.util.ArrayList;
@@ -62,6 +61,7 @@ public class TCFconverter {
 	private String lastTextValue;
 	private HashMap<String, ArrayList<DepNode>> dependencyHashMap;
 	private HashMap<Integer, String> textValues;
+        private int lastOrder;
 
 	public String warnings;
 
@@ -78,7 +78,7 @@ public class TCFconverter {
 	public TCFconverter(String fileNameIn,  
 			boolean constituencyTree) throws WLFormatException,
 			IOException, UnknownTokenException, MissingLayerException {
-
+            
 		curSent = new StringBuilder(); //output for sentence currently processed
 		sentenceID = 1; // attribute for sentences
 		num = 0; // attribute for cons and token elements
@@ -103,9 +103,14 @@ public class TCFconverter {
 		TextCorpusStored tc = wld.getTextCorpus(); 
 
 		// get necessary annotation layers
-		text = tc.getTextLayer().getText();
+                TextLayerStored textLayer = tc.getTextLayer();
+                if (textLayer != null) {
+                    text = textLayer.getText();
+                } else {
+                    text = "";
+                }
 		ll = tc.getLemmasLayer();
-		ml = null; //tc.getMorphologyLayer(); skipping morph until I can debug
+		ml = tc.getMorphologyLayer(); //!!!skipping morph until I can debug
 		ptl = tc.getPosTagsLayer();
 		if (constituencyTree) {
 			cpl = tc.getConstituentParsingLayer();
@@ -171,9 +176,14 @@ public class TCFconverter {
 		TextCorpusStored tc = wld.getTextCorpus(); 
 
 		// get necessary annotation layers
-		text = tc.getTextLayer().getText();
+                TextLayerStored textLayer = tc.getTextLayer();
+                if (textLayer != null) {
+                    text = textLayer.getText();
+                } else {
+                    text = "";
+                }
 		ll = tc.getLemmasLayer();
-		ml = null; //tc.getMorphologyLayer(); skipping morph until I can debug
+		ml = tc.getMorphologyLayer(); //!!skipping morph until I can debug
 		ptl = tc.getPosTagsLayer();
 		if (constituencyTree) {
 			cpl = tc.getConstituentParsingLayer();
@@ -207,6 +217,7 @@ public class TCFconverter {
 			throws IOException, UnknownTokenException {
 		out.write("<?xml version=\"1.0\"?>\n");
 		out.write("<corpus>\n");
+                //System.err.println("Making dependency treebank...");
 		for (int i = 0; i < dpl.size(); i++) {
 			createDependencyHashMap(i);
 			DepNode root = new DepNode();
@@ -278,11 +289,17 @@ public class TCFconverter {
 			}
 			if (ml != null && ml.getAnalysis(t) != null) {
 				Feature[] fs = ml.getAnalysis(t).getFeatures();
+                                Set<String> added = new HashSet<String>(); //to prevent morphology overloading
 				for (int j = 0; j < fs.length; j++) {
-					String name = "morph" + fs[j].getName();
+                                    String name = "morph" + fs[j].getName();
+                                    if (!added.contains(name)) {
 					name = name.replaceAll("[\\s<>\"'&]+", "");
 					curSent.append(formatAttr(name, 
 							fs[j].getValue()));
+                                        added.add(name);
+                                    } else {
+                                        System.err.println("Double morphological attribute '" + name + "' on token #" + Integer.toString(num));
+                                    }
 				}
 			}
 		}
@@ -421,6 +438,8 @@ public class TCFconverter {
 			throws IOException, UnknownTokenException {
 		out.write("<?xml version=\"1.0\"?>\n");
 		out.write("<corpus>\n");
+                //System.err.println("Making constituency treebank...");
+                lastOrder = 0;
 		for (int i=0; i < cpl.size(); i++) {
 			Constituent root = cpl.getParseRoot(i);
 			appendConstituencyElement(root, 0);
@@ -445,15 +464,23 @@ public class TCFconverter {
 		}
 		String indentation = indent(level);
 		Constituent[] children = c.getChildren();
-		if (children == null) {
-			appendConstituencyTerm(c, indentation);
-		} else {
-			if (level == 0) {
-				appendConstituencySent(c, indentation, children, level);
-			} else {
-				appendConstituencyCons(c, indentation, children, level);
-			}
-		}
+                if (level == 0) {
+                    appendConstituencySent(c, indentation, children, level);
+                } else if (children == null) {
+                    appendConstituencyTerm(c, indentation);
+                } else {
+                    appendConstituencyCons(c, indentation, children, level);
+                }
+                
+//		if (children == null) {
+//			appendConstituencyTerm(c, indentation);
+//		} else {
+//			if (level == 0) {
+//				appendConstituencySent(c, indentation, children, level);
+//			} else {
+//				appendConstituencyCons(c, indentation, children, level);
+//			}
+//		}
 	}
 
 	/**
@@ -466,6 +493,10 @@ public class TCFconverter {
 	private void appendConstituencyCons(Constituent c, 
 			String indentation, Constituent[] children, int level) 
 					throws UnknownTokenException {
+                //added to censor traces until I can make a fix
+                if ((cpl.getTokens(c) == null) || (cpl.getTokens(c).length == 0)) {
+                    return;
+                }
 		curSent.append(indentation + "<cons");
 		curSent.append(formatAttr("num", Integer.toString(num)));
 		if (c.getCategory() != null)
@@ -473,12 +504,20 @@ public class TCFconverter {
 		if (c.getEdge() != null)
 			curSent.append(String.format(" edge=\"%s\"", c.getEdge()));
 		if (cpl.getTokens(c) != null) {
-			//order value of the first token in the constituent
-			curSent.append(formatAttr("start", Integer.toString(
-					cpl.getTokens(c)[0].getOrder())));
-			//order value of the last token in the constituent
-			curSent.append(formatAttr("finish", Integer.toString(
-					cpl.getTokens(c)[cpl.getTokens(c).length - 1].getOrder())));
+                        if (cpl.getTokens(c).length == 0) {
+                            //empty constituent means trace element!!
+                            //word order is 1 + last token or 0 if no last token
+                            curSent.append(formatAttr("trace", "true"));
+                            curSent.append(formatAttr("start", Integer.toString(lastOrder + 1)));
+                            curSent.append(formatAttr("finish", Integer.toString(lastOrder + 1)));
+                        } else {
+                            //order value of the first token in the constituent
+                            curSent.append(formatAttr("start", Integer.toString(
+                                            cpl.getTokens(c)[0].getOrder())));
+                            //order value of the last token in the constituent
+                            curSent.append(formatAttr("finish", Integer.toString(
+                                            cpl.getTokens(c)[cpl.getTokens(c).length - 1].getOrder())));
+                        }
 		}
 		curSent.append(">\n");
 		num += 1;
@@ -498,6 +537,7 @@ public class TCFconverter {
 	private void appendConstituencySent(Constituent c, String indentation, 
 			Constituent[] children, int level) 
 					throws UnknownTokenException {
+                //System.err.println("sentenceID=" + sentenceID);
 		curSent.append(indentation + "<sent");
 		curSent.append(formatAttr("id", "st" + sentenceID));
 		curSent.append(">\n");
@@ -509,7 +549,7 @@ public class TCFconverter {
 			curSent.append(String.format(" cat=\"%s\"", c.getCategory()));
 		if (c.getEdge() != null)
 			curSent.append(String.format(" edge=\"%s\"", c.getEdge()));
-		if (cpl.getTokens(c) != null) {
+		if ((cpl.getTokens(c) != null) && (cpl.getTokens(c).length > 0)) {
 			//order value of the first token in the constituent
 			curSent.append(formatAttr("start", Integer.toString(
 					cpl.getTokens(c)[0].getOrder())));
@@ -517,12 +557,14 @@ public class TCFconverter {
 			curSent.append(formatAttr("finish", Integer.toString(
 					cpl.getTokens(c)[cpl.getTokens(c).length - 1].getOrder())));
 		}
-
+                curSent.append(formatAttr("_root", "true"));
 		curSent.append(">\n");
 
-		for (int i = 0; i < children.length; i++) {
-			appendConstituencyElement(children[i], level+2);
-		}
+                if (children != null) {
+                    for (int i = 0; i < children.length; i++) {
+                        appendConstituencyElement(children[i], level+2);
+                    }
+                }
 		curSent.append(indent(level+1) + "</cons>\n");
 		curSent.append(indentation + "</sent>\n");
 	}
@@ -535,43 +577,68 @@ public class TCFconverter {
 	private void appendConstituencyTerm(Constituent c, String indentation) 
 			throws UnknownTokenException{
 		Token[] t = cpl.getTokens(c);
-		for (int i = 0; i < t.length; i++) {
-			curSent.append(indentation + "<term");
-			curSent.append(formatAttr("num", Integer.toString(num)));
-			if (t[i] != null) {
-				curSent.append(formatAttr("token", t[i].getString()));
-				if (ll != null && ll.getLemma(t[i]) != null) {
-					curSent.append(formatAttr(
-							"lemma", ll.getLemma(t[i]).getString()));
-				}
-				if (ptl != null && ptl.getTag(t[i]) != null) {
-					curSent.append(formatAttr(
-							"pos", ptl.getTag(t[i]).getString()));
-				}
-				t[i].getID();
-			}
-			// append morph attributes
-			if (ml != null && ml.getAnalysis(t[i]) != null) {
-				Feature[] fs = ml.getAnalysis(t[i]).getFeatures();
-				for (int j = 0; j < fs.length; j++) {
-					String name = "morph" + fs[j].getName();
-					name = name.replaceAll("[\\s<>\"'&]+", "");
-					curSent.append(formatAttr(name, 
-							fs[j].getValue()));
-				}
-			}
-			if (c.getEdge() != null)
-				curSent.append(String.format(" edge=\"%s\"", c.getEdge()));
-			String order = Integer.toString(t[i].getOrder());
-			curSent.append(formatAttr("order", order));
-			curSent.append(formatAttr("start", order));
-			curSent.append(formatAttr("finish", order));
-			// find whitespace in the text
-			String textValue = getTextValue(t[i].getString());
-			curSent.append(formatAttr("text", textValue));
-			curSent.append("/>\n");
-			num += 1;
-		}
+                if (t.length == 0) {
+                    //trace terminal element
+                    curSent.append(indentation + "<term");
+                    curSent.append(formatAttr("num", Integer.toString(num)));                    
+                    curSent.append(formatAttr("trace", "true"));
+                    curSent.append(formatAttr("token", c.getCategory()));
+                    if (c.getEdge() != null) {
+                        curSent.append(String.format(" edge=\"%s\"", c.getEdge()));
+                    }
+                    String order = Integer.toString(lastOrder + 1);
+                    curSent.append(formatAttr("order", order));
+                    curSent.append(formatAttr("start", order));
+                    curSent.append(formatAttr("finish", order));
+                    curSent.append(formatAttr("text", " -" + c.getCategory() + "- "));
+                    curSent.append("/>\n");
+                    num += 1;
+                } else {
+                    for (int i = 0; i < t.length; i++) {
+                            curSent.append(indentation + "<term");
+                            curSent.append(formatAttr("num", Integer.toString(num)));
+                            if (t[i] != null) {
+                                    curSent.append(formatAttr("token", t[i].getString()));
+                                    if (ll != null && ll.getLemma(t[i]) != null) {
+                                            curSent.append(formatAttr(
+                                                            "lemma", ll.getLemma(t[i]).getString()));
+                                    }
+                                    if (ptl != null && ptl.getTag(t[i]) != null) {
+                                            curSent.append(formatAttr(
+                                                            "pos", ptl.getTag(t[i]).getString()));
+                                    }
+                                    t[i].getID();
+                            }
+                            // append morph attributes
+                            if (ml != null && ml.getAnalysis(t[i]) != null) {
+                                    Feature[] fs = ml.getAnalysis(t[i]).getFeatures();
+                                    Set<String> added = new HashSet<String>(); //to prevent morphology overloading
+                                    for (int j = 0; j < fs.length; j++) {
+                                            String name = "morph" + fs[j].getName();
+                                            if (!added.contains(name)) {
+                                                name = name.replaceAll("[\\s<>\"'&]+", "");
+                                                curSent.append(formatAttr(name, 
+                                                                fs[j].getValue()));
+                                                added.add(name);
+                                            } else {
+                                                System.err.println("Double morphological attribute '" + name + "' on token #" + Integer.toString(num));
+                                            }
+                                    }
+                            }
+                            if (c.getEdge() != null)
+                                    curSent.append(String.format(" edge=\"%s\"", c.getEdge()));
+                            String order = Integer.toString(t[i].getOrder());
+                            lastOrder = t[i].getOrder();
+                            curSent.append(formatAttr("order", order));
+                            curSent.append(formatAttr("start", order));
+                            curSent.append(formatAttr("finish", order));
+                            // find whitespace in the text
+                            String textValue = getTextValue(t[i].getString());
+                            curSent.append(formatAttr("text", textValue));
+                            curSent.append("/>\n");
+                            num += 1;
+                    }
+                }
 	}
 
 	/**

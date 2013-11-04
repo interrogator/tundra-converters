@@ -22,9 +22,9 @@
       <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>de.tuebingen.uni.sfs.clarind</groupId>
+      <groupId>eu.clarin.weblicht</groupId>
       <artifactId>wlfxb</artifactId>
-      <version>1.1</version>
+      <version>1.2.6</version>
     </dependency>
   </dependencies>
   
@@ -44,6 +44,33 @@
           </execution>
         </executions>
         <configuration>
+          <archive>
+            <manifest>
+              <addClasspath>true</addClasspath>
+              <mainClass>de.tuebingen.uni.sfs.clarin.tundra.tcf.TCFconverter</mainClass>
+            </manifest>
+          </archive>
+          <descriptorRefs>
+            <descriptorRef>jar-with-dependencies</descriptorRef>
+          </descriptorRefs>
+        </configuration>
+      </plugin>
+      <plugin>
+        <!-- NOTE: We don't need a groupId specification because the group is
+             org.apache.maven.plugins ...which is assumed by default.
+         -->
+        <artifactId>maven-assembly-plugin</artifactId>
+        <version>2.4</version>
+        <configuration>
+        <executions>
+          <execution>
+            <id>make-assembly</id> <!-- this is used for inheritance merges -->
+            <phase>package</phase> <!-- bind to the packaging phase -->
+            <goals>
+              <goal>single</goal>
+            </goals>        
+        </execution>
+        </executions>
           <archive>
             <manifest>
               <addClasspath>true</addClasspath>
