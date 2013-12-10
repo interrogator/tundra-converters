@@ -706,7 +706,7 @@ public class TCFconverter {
 		value = value.replaceAll("<", "&lt;");
 		value = value.replaceAll(">", "&gt;");
 		value = value.replaceAll("\"", "&quot;");
-		//value = value.replaceAll("&", "&amp;");
+		value = value.replaceAll("&", "&amp;");
 		value = value.replaceAll("'", "&apos;");
 		return String.format(" %s=\"%s\"", name, value);
 	}
