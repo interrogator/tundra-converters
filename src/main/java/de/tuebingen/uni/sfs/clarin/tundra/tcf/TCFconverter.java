@@ -110,7 +110,7 @@ public class TCFconverter {
                     text = "";
                 }
 		ll = tc.getLemmasLayer();
-		ml = tc.getMorphologyLayer(); //!!!skipping morph until I can debug
+		ml = tc.getMorphologyLayer(); 
 		ptl = tc.getPosTagsLayer();
 		if (constituencyTree) {
 			cpl = tc.getConstituentParsingLayer();
