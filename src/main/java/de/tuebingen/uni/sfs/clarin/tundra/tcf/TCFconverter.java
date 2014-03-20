@@ -12,6 +12,8 @@ package de.tuebingen.uni.sfs.clarin.tundra.tcf;
  *          	Chris Culy
  *              
  *              in designing and debugging my program.
+ * 
+ * I made some changes for morphology -- Scott
  */
 
 import java.io.BufferedWriter;
