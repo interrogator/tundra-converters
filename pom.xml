@@ -3,7 +3,7 @@
 
     <groupId>de.tuebingen.uni.sfs.clarin.tundra</groupId>
     <artifactId>tundra-converters</artifactId>
-    <version>1.0.1-SNAPSHOT</version>
+    <version>1.0.1</version>
     <packaging>jar</packaging>
 
     <name>tundra-converters</name>
@@ -26,7 +26,7 @@
         <developerConnection>
             scm:git:https://dspin.sfs.uni-tuebingen.de/gitblit/git/clarind/libraries/tundra-converters.git
         </developerConnection>
-        <tag>HEAD</tag>
+        <tag>tundra-converters-1.0.1</tag>
     </scm>
 
     <distributionManagement>
