@@ -3,11 +3,11 @@
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>de.tuebingen.uni.sfs</groupId>
-  <artifactId>convertGenericTCF</artifactId>
+  <artifactId>tundra-converters</artifactId>
   <version>1.0-SNAPSHOT</version>
   <packaging>jar</packaging>
 
-  <name>convertGenericTCF</name>
+  <name>tundra-converters</name>
   <url>http://maven.apache.org</url>
 
   <properties>
