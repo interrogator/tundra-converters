@@ -793,8 +793,6 @@ public class TCFconverter {
 			System.err.println("\nDone." + c.warnings);
 		} catch (IOException e) {
 			System.out.println(e.getMessage());
-		} catch (WLFormatException e) {
-			System.out.println(e.getMessage());
 		} catch (UnknownTokenException e) {
 			System.out.println(e.getMessage());
 		} catch (MissingLayerException e) {
