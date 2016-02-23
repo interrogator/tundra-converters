@@ -16,22 +16,18 @@ package de.tuebingen.uni.sfs.clarin.tundra.tcf;
  * I made some changes for morphology -- Scott
  */
 
-import java.io.BufferedWriter;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.OutputStreamWriter;
+import eu.clarin.weblicht.wlfxb.io.WLDObjector;
+import eu.clarin.weblicht.wlfxb.io.WLFormatException;
+import eu.clarin.weblicht.wlfxb.tc.api.*;
+import eu.clarin.weblicht.wlfxb.tc.xb.*;
+import eu.clarin.weblicht.wlfxb.xb.WLData;
+
+import java.io.*;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.regex.Pattern;
-
-import eu.clarin.weblicht.wlfxb.io.*;
-import eu.clarin.weblicht.wlfxb.tc.api.*;
-import eu.clarin.weblicht.wlfxb.tc.xb.*;
-import eu.clarin.weblicht.wlfxb.xb.WLData;
-import eu.clarin.weblicht.wlfxb.tc.xb.LemmasLayerStored;
-import java.io.FileOutputStream;
 
 public class TCFconverter {
 	private static final String HELP = 
