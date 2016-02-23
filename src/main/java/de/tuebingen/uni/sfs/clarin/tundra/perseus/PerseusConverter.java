@@ -47,6 +47,9 @@ public class PerseusConverter {
         List<Element> foundChildren = new ArrayList<Element>();
         for (int ai = 0; ai < allElements.size(); ai++) {
             Element curTokenElement = allElements.get(ai);
+
+
+
             if (curTokenElement.getAttribute("head").equals(elementId)) {
                 if (elementHasChildren(allElements, curTokenElement.getAttribute("id"))) {
                     List<Element> curFoundChildren = new ArrayList<Element>();
@@ -54,11 +57,47 @@ public class PerseusConverter {
                     for (int fi = 0; fi < curFoundChildren.size(); fi++) {
                         curTokenElement.appendChild(curFoundChildren.get(fi));
                     }
+                    //childrenCount += curFoundChildren.size();
+
                 }
+
+
                 foundChildren.add(curTokenElement);
+                //childrenCount = 0;
             }
+
+
+
+            Integer childrenNum = countChildren(allElements, curTokenElement.getAttribute("id"), 0);
+            curTokenElement.setAttribute("children", String.valueOf(childrenNum));
+
         }
         return foundChildren;
+    }
+
+    public static Integer countChildren(List<Element> allElements, String elementId, Integer childrenNumber) {
+        //Integer childrenNumber = 0;
+        for (int ai = 0; ai < allElements.size(); ai++) {
+            Element curTokenElement = allElements.get(ai);
+
+            if (curTokenElement.getAttribute("head").equals(elementId)) {
+
+                if (elementHasChildren(allElements, curTokenElement.getAttribute("id"))) {
+                    //childrenNumber += 1;
+
+                    childrenNumber = childrenNumber + countChildren(allElements,curTokenElement.getAttribute("id"), childrenNumber);
+
+                }
+
+                else {
+                    childrenNumber += 1;
+                }
+
+
+
+            }
+        }
+        return childrenNumber;
     }
 
     public static boolean elementHasChildren(List<Element> allElements, String elementId) {
@@ -86,6 +125,7 @@ public class PerseusConverter {
             String inputFolder = args[0];
             String outputFile = args[1];
             System.out.println("Opening the folder containing XML files: " + inputFolder);
+            System.out.println("**********************************************************");
 
 
 
@@ -98,6 +138,7 @@ public class PerseusConverter {
             Element rootElement = docOutput.createElement("treebank");
             docOutput.appendChild(rootElement);
             Integer sentenceCounter = 0;
+            Integer tokenCounter = 0;
 
             // Reading files from a given folder (we are going to merge them together in one treebank file)
             List<String> xmlFiles = getFilesList(inputFolder);
@@ -128,10 +169,16 @@ public class PerseusConverter {
 
                         if (curAttributes.getLength()>0) {
                             Element sentElement = docOutput.createElement("sent");
+                            Element consElement = docOutput.createElement("cons");
+                            consElement.setAttribute("start", String.valueOf(tokenCounter+1));
+                            consElement.setAttribute("num", String.valueOf(tokenCounter+1));
+                            consElement.setAttribute("cat", "ROOT");
+                            consElement.setAttribute("_root", "true");
                             sentenceCounter += 1;
                             // Start adding attributes to the sentence node
                             sentElement.setAttribute("id", "st" + sentenceCounter);
 
+                            // Copy all sentence attributes from the source node to the new one
                             for (int attr = 0; attr < curAttributes.getLength(); attr++) {
                                 if (curAttributes.item(attr).getNodeName().equals("id") == false) {
                                     sentElement.setAttribute(curAttributes.item(attr).getNodeName(), curAttributes.item(attr).getNodeValue());
@@ -150,17 +197,40 @@ public class PerseusConverter {
                                     Element eChildElement = (Element) nChildNode;
                                     NamedNodeMap curChildAttributes = eChildElement.getAttributes();
                                     Element tokenElement = docOutput.createElement("token");
+                                    tokenCounter += 1;
                                     for (int attr = 0; attr < curChildAttributes.getLength(); attr++) {
-                                        tokenElement.setAttribute(curChildAttributes.item(attr).getNodeName(), curChildAttributes.item(attr).getNodeValue());
-                                        if (curChildAttributes.item(attr).getNodeName().equals("head")) {
-                                            if (curChildAttributes.item(attr).getNodeValue().equals("")) {
+                                        String curNodeName = curChildAttributes.item(attr).getNodeName();
+                                        String curNodeValue = curChildAttributes.item(attr).getNodeValue();
+                                        // Remapping attribute names
+                                        if (curNodeName.equals("form")) {
+                                            curNodeName = "token";
+                                        }
+                                        if (curNodeName.equals("postag")) {
+                                            curNodeName = "pos";
+                                            if (curNodeValue.equals("u--------")) {
+                                                tokenElement.setAttribute("_punct", "true");
+                                            }
+                                        }
+                                        if (curNodeName.equals("relation")) {
+                                            curNodeName = "edge";
+                                        }
+
+                                        //tokenElement.setAttribute(curChildAttributes.item(attr).getNodeName(), curChildAttributes.item(attr).getNodeValue());
+                                        tokenElement.setAttribute(curNodeName, curNodeValue);
+                                        if (curNodeName.equals("head")) {
+                                            if (curNodeValue.equals("")) {
                                                 curChildAttributes.item(attr).setNodeValue("0");
                                             }
                                         }
                                     }
+                                    tokenElement.setAttribute("start", String.valueOf(tokenCounter-1));
+                                    tokenElement.setAttribute("num", String.valueOf(tokenCounter));
+                                    tokenElement.setAttribute("finish", "");
+                                    tokenElement.setAttribute("order", String.valueOf(tokenCounter-1));
                                     elList.add(tokenElement);
                                 }
                             }
+                            consElement.setAttribute("finish", String.valueOf(tokenCounter-1));
 
 
 
@@ -179,7 +249,8 @@ public class PerseusConverter {
                                     for (int chidInd = 0; chidInd < itsChildren.size(); chidInd++) {
                                         closeToRootElement.appendChild(itsChildren.get(chidInd));
                                     }
-                                    sentElement.appendChild(closeToRootElement);
+                                    consElement.appendChild(closeToRootElement);
+                                    sentElement.appendChild(consElement);
                                 }
                             }
 
