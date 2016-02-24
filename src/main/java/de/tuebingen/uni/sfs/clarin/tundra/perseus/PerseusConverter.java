@@ -64,12 +64,21 @@ public class PerseusConverter {
 
                 //childrenNumber(curTokenElement, 0);
 
+
+                //Integer chCount = childrenNumber(curTokenElement, 0);
+                //curTokenElement.setAttribute("finish", String.valueOf(Integer.valueOf(curTokenElement.getAttribute("start"))+chCount));
+
                 foundChildren.add(curTokenElement);
                 //childrenCount = 0;
             }
 
+            Integer chCount = childrenNumber(curTokenElement, 0);
+            //curTokenElement.setAttribute("children", String.valueOf(chCount));
+            curTokenElement.setAttribute("finish", String.valueOf(Integer.valueOf(curTokenElement.getAttribute("start"))+chCount));
 
-            curTokenElement.setAttribute("children", String.valueOf(childrenNumber(curTokenElement, 0)));
+            // we need to remove attributes that are not going to be used by our system
+            //curTokenElement.removeAttribute("id");
+            //curTokenElement.removeAttribute("head");
             //Integer childrenNum = countChildren(allElements, curTokenElement.getAttribute("id"), 0);
             //curTokenElement.setAttribute("children", String.valueOf(childrenNum));
 
@@ -78,25 +87,15 @@ public class PerseusConverter {
     }
 
     public static Integer countChildren(List<Element> allElements, String elementId, Integer childrenNumber) {
-        //Integer childrenNumber = 0;
         for (int ai = 0; ai < allElements.size(); ai++) {
             Element curTokenElement = allElements.get(ai);
-
             if (curTokenElement.getAttribute("head").equals(elementId)) {
-
                 if (elementHasChildren(allElements, curTokenElement.getAttribute("id"))) {
-                    //childrenNumber += 1;
-
                     childrenNumber = childrenNumber + countChildren(allElements,curTokenElement.getAttribute("id"), childrenNumber);
-
                 }
-
                 else {
                     childrenNumber += 1;
                 }
-
-
-
             }
         }
         return childrenNumber;
@@ -128,8 +127,6 @@ public class PerseusConverter {
                 }
             }
 
-
-
             elNum = chList.size();
             for (int t=0; t<chList.size(); t++) {
                 if (chList.get(t).hasChildNodes()) {
@@ -139,6 +136,32 @@ public class PerseusConverter {
         }
         return elNum;
     }
+
+    public static void removeElementAttributes(Element treeElement) {
+        treeElement.removeAttribute("id");
+        treeElement.removeAttribute("head");
+
+        if (treeElement.hasChildNodes()) {
+            NodeList treeElList = treeElement.getChildNodes();
+            for (int te = 0; te < treeElList.getLength(); te++) {
+                Node treeNode = treeElList.item(te);
+                if (treeNode.getNodeType() == Node.ELEMENT_NODE) {
+                    Element eElement = (Element) treeNode;
+
+                    // we need to remove attributes that are not going to be used by our system
+                    eElement.removeAttribute("id");
+                    eElement.removeAttribute("head");
+
+                    // we repeat this procedure for each child
+                    if (eElement.hasChildNodes()) {
+                        removeElementAttributes(eElement);
+                    }
+                }
+            }
+        }
+    }
+
+
 
     public static void main(String[] args) throws ParserConfigurationException, IOException, SAXException, TransformerException {
         if (args == null) {
@@ -277,7 +300,7 @@ public class PerseusConverter {
                                     for (int chidInd = 0; chidInd < itsChildren.size(); chidInd++) {
                                         closeToRootElement.appendChild(itsChildren.get(chidInd));
                                     }
-
+                                    removeElementAttributes(closeToRootElement);
                                     consElement.appendChild(closeToRootElement);
                                     sentElement.appendChild(consElement);
                                 }
