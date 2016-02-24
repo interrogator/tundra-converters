@@ -6,6 +6,7 @@ import org.xml.sax.SAXException;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.transform.OutputKeys;
 import javax.xml.transform.Transformer;
 import javax.xml.transform.TransformerException;
 import javax.xml.transform.TransformerFactory;
@@ -47,59 +48,24 @@ public class PerseusConverter {
         List<Element> foundChildren = new ArrayList<Element>();
         for (int ai = 0; ai < allElements.size(); ai++) {
             Element curTokenElement = allElements.get(ai);
-
-
-
             if (curTokenElement.getAttribute("head").equals(elementId)) {
                 if (elementHasChildren(allElements, curTokenElement.getAttribute("id"))) {
                     List<Element> curFoundChildren = new ArrayList<Element>();
-
                     curFoundChildren = findAllChildren(allElements, curTokenElement.getAttribute("id"));
                     for (int fi = 0; fi < curFoundChildren.size(); fi++) {
                         curTokenElement.appendChild(curFoundChildren.get(fi));
                     }
-                    //childrenCount += curFoundChildren.size();
-
                 }
-
-                //childrenNumber(curTokenElement, 0);
-
-
-                //Integer chCount = childrenNumber(curTokenElement, 0);
-                //curTokenElement.setAttribute("finish", String.valueOf(Integer.valueOf(curTokenElement.getAttribute("start"))+chCount));
-
                 foundChildren.add(curTokenElement);
-                //childrenCount = 0;
             }
 
             Integer chCount = childrenNumber(curTokenElement, 0);
             //curTokenElement.setAttribute("children", String.valueOf(chCount));
             curTokenElement.setAttribute("finish", String.valueOf(Integer.valueOf(curTokenElement.getAttribute("start"))+chCount));
-
-            // we need to remove attributes that are not going to be used by our system
-            //curTokenElement.removeAttribute("id");
-            //curTokenElement.removeAttribute("head");
-            //Integer childrenNum = countChildren(allElements, curTokenElement.getAttribute("id"), 0);
-            //curTokenElement.setAttribute("children", String.valueOf(childrenNum));
-
         }
         return foundChildren;
     }
 
-    public static Integer countChildren(List<Element> allElements, String elementId, Integer childrenNumber) {
-        for (int ai = 0; ai < allElements.size(); ai++) {
-            Element curTokenElement = allElements.get(ai);
-            if (curTokenElement.getAttribute("head").equals(elementId)) {
-                if (elementHasChildren(allElements, curTokenElement.getAttribute("id"))) {
-                    childrenNumber = childrenNumber + countChildren(allElements,curTokenElement.getAttribute("id"), childrenNumber);
-                }
-                else {
-                    childrenNumber += 1;
-                }
-            }
-        }
-        return childrenNumber;
-    }
 
     public static boolean elementHasChildren(List<Element> allElements, String elementId) {
         Boolean itHasChildren = false;
@@ -249,6 +215,7 @@ public class PerseusConverter {
                                     NamedNodeMap curChildAttributes = eChildElement.getAttributes();
                                     Element tokenElement = docOutput.createElement("token");
                                     tokenCounter += 1;
+
                                     for (int attr = 0; attr < curChildAttributes.getLength(); attr++) {
                                         String curNodeName = curChildAttributes.item(attr).getNodeName();
                                         String curNodeValue = curChildAttributes.item(attr).getNodeValue();
@@ -273,6 +240,14 @@ public class PerseusConverter {
                                                 curChildAttributes.item(attr).setNodeValue("0");
                                             }
                                         }
+                                    }
+                                    String tokenWordId = tokenElement.getAttribute("id");
+                                    //System.out.println(tokenWordId);
+                                    if (tokenWordId!="1") {
+                                        tokenElement.setAttribute("text", " " + tokenElement.getAttribute("token"));
+                                    }
+                                    else {
+                                        tokenElement.setAttribute("text", tokenElement.getAttribute("token") + " ");
                                     }
                                     tokenElement.setAttribute("start", String.valueOf(tokenCounter-1));
                                     tokenElement.setAttribute("num", String.valueOf(tokenCounter));
@@ -300,7 +275,7 @@ public class PerseusConverter {
                                     for (int chidInd = 0; chidInd < itsChildren.size(); chidInd++) {
                                         closeToRootElement.appendChild(itsChildren.get(chidInd));
                                     }
-                                    removeElementAttributes(closeToRootElement);
+                                    //removeElementAttributes(closeToRootElement);
                                     consElement.appendChild(closeToRootElement);
                                     sentElement.appendChild(consElement);
                                 }
@@ -315,18 +290,21 @@ public class PerseusConverter {
                 }
 
 
-                if (xi>0) {
-                    break;
-                }
-                TransformerFactory transformerFactory = TransformerFactory.newInstance();
-                Transformer transformer = transformerFactory.newTransformer();
-                DOMSource source = new DOMSource(docOutput);
-                StreamResult result = new StreamResult(new File(outputFile));
-                transformer.transform(source, result);
-                System.out.println("Writing data into the file: " + outputFile);
+                //if (xi>5) {
+                //    break;
+                //}
+
 
 
             }
+            TransformerFactory transformerFactory = TransformerFactory.newInstance();
+            Transformer transformer = transformerFactory.newTransformer();
+            transformer.setOutputProperty(OutputKeys.INDENT,"yes");
+            transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "2");
+            DOMSource source = new DOMSource(docOutput);
+            StreamResult result = new StreamResult(new File(outputFile));
+            transformer.transform(source, result);
+            System.out.println("Writing data into the file: " + outputFile);
         }
 
 
