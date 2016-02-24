@@ -53,6 +53,7 @@ public class PerseusConverter {
             if (curTokenElement.getAttribute("head").equals(elementId)) {
                 if (elementHasChildren(allElements, curTokenElement.getAttribute("id"))) {
                     List<Element> curFoundChildren = new ArrayList<Element>();
+
                     curFoundChildren = findAllChildren(allElements, curTokenElement.getAttribute("id"));
                     for (int fi = 0; fi < curFoundChildren.size(); fi++) {
                         curTokenElement.appendChild(curFoundChildren.get(fi));
@@ -61,15 +62,16 @@ public class PerseusConverter {
 
                 }
 
+                //childrenNumber(curTokenElement, 0);
 
                 foundChildren.add(curTokenElement);
                 //childrenCount = 0;
             }
 
 
-
-            Integer childrenNum = countChildren(allElements, curTokenElement.getAttribute("id"), 0);
-            curTokenElement.setAttribute("children", String.valueOf(childrenNum));
+            curTokenElement.setAttribute("children", String.valueOf(childrenNumber(curTokenElement, 0)));
+            //Integer childrenNum = countChildren(allElements, curTokenElement.getAttribute("id"), 0);
+            //curTokenElement.setAttribute("children", String.valueOf(childrenNum));
 
         }
         return foundChildren;
@@ -110,6 +112,32 @@ public class PerseusConverter {
             }
         }
         return itHasChildren;
+    }
+
+    public static Integer childrenNumber(Element treeElement, Integer elNum) {
+        if (treeElement.hasChildNodes()) {
+            //Integer currentChild = treeElement.getChildNodes().getLength();
+            List<Element> chList = new ArrayList<Element>();
+            NodeList treeElList = treeElement.getChildNodes();
+
+            for (int te = 0; te < treeElList.getLength(); te++) {
+                Node treeNode = treeElList.item(te);
+                if (treeNode.getNodeType() == Node.ELEMENT_NODE) {
+                    Element eElement = (Element) treeNode;
+                    chList.add(eElement);
+                }
+            }
+
+
+
+            elNum = chList.size();
+            for (int t=0; t<chList.size(); t++) {
+                if (chList.get(t).hasChildNodes()) {
+                    elNum += childrenNumber(chList.get(t), elNum);
+                }
+            }
+        }
+        return elNum;
     }
 
     public static void main(String[] args) throws ParserConfigurationException, IOException, SAXException, TransformerException {
@@ -249,6 +277,7 @@ public class PerseusConverter {
                                     for (int chidInd = 0; chidInd < itsChildren.size(); chidInd++) {
                                         closeToRootElement.appendChild(itsChildren.get(chidInd));
                                     }
+
                                     consElement.appendChild(closeToRootElement);
                                     sentElement.appendChild(consElement);
                                 }
