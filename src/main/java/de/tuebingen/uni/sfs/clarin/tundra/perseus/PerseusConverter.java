@@ -18,16 +18,15 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Created by megalex on 19/02/16.
+ * Created by Alexandr Chernov on 19/02/16.
+ * This is a converter for the Latin and Ancient Greek treebanks
+ * taken from the Perseus project https://github.com/PerseusDL/treebank_data
  */
 public class PerseusConverter {
-    public void convert(String inputString) {
-        System.out.println(inputString);
-    }
-
     /**
+     * Provides a list of files in a certain folder
      * @param sourceFolder the name of the folder to browse
-     * @return list of files in this folder
+     * @return list of files in the given folder
      */
     public static List<String> getFilesList(String sourceFolder) {
         File folder = new File(sourceFolder);
@@ -35,51 +34,42 @@ public class PerseusConverter {
         List<String> folderList = new ArrayList<String>();;
         for (int i = 0; i < listOfFiles.length; i++) {
             if (listOfFiles[i].isFile()) {
-                //System.out.println("File " + listOfFiles[i].getName());
                 folderList.add(listOfFiles[i].getName());
             }
         }
         return folderList;
     }
 
-    public static List<Element> findAllChildren(List<Element> allElements, String elementId, Integer tokenNumbering) {
-
+    /**
+     * Finds all child nodes of a given XML element
+     * @param allElements list of all elements found in a sentence
+     * @param elementId ID of a particular element
+     * @return list of children for a given element
+     */
+    public static List<Element> findAllChildren(List<Element> allElements, String elementId) {
         List<Element> foundChildren = new ArrayList<Element>();
         for (int ai = 0; ai < allElements.size(); ai++) {
             Element curTokenElement = allElements.get(ai);
-
             if (curTokenElement.getAttribute("head").equals(elementId)) {
-
-
-
                 if (elementHasChildren(allElements, curTokenElement.getAttribute("id"))) {
-                    //tokenNumbering += 1;
-                    //curTokenElement.setAttribute("num", String.valueOf(tokenNumbering));
-
                     List<Element> curFoundChildren = new ArrayList<Element>();
-                    curFoundChildren = findAllChildren(allElements, curTokenElement.getAttribute("id"), tokenNumbering);
+                    curFoundChildren = findAllChildren(allElements, curTokenElement.getAttribute("id"));
                     for (int fi = 0; fi < curFoundChildren.size(); fi++) {
-                        //tokenNumbering += 1;
-                        //curFoundChildren.get(fi).setAttribute("num", String.valueOf(tokenNumbering));
-
                         curTokenElement.appendChild(curFoundChildren.get(fi));
                     }
                 }
-
-
-
                 foundChildren.add(curTokenElement);
             }
-
-
-            //Integer chCount = childrenNumber(curTokenElement, 0);
-            //curTokenElement.setAttribute("children", String.valueOf(chCount));
-            //curTokenElement.setAttribute("finish", String.valueOf(Integer.valueOf(curTokenElement.getAttribute("start"))+chCount));
         }
         return foundChildren;
     }
 
-
+    /**
+     * Checks if a given XML element has children
+     * @param allElements list of all elements found in a sentence
+     * @param elementId ID of a particular element
+     * @return true or false depending on the result
+     */
     public static boolean elementHasChildren(List<Element> allElements, String elementId) {
         Boolean itHasChildren = false;
         for (int ch = 0; ch < allElements.size(); ch++) {
@@ -92,43 +82,17 @@ public class PerseusConverter {
         return itHasChildren;
     }
 
-    public static Integer childrenNumber(Element treeElement, Integer elNum) {
-        if (treeElement.hasChildNodes()) {
-            //Integer currentChild = treeElement.getChildNodes().getLength();
-            List<Element> chList = new ArrayList<Element>();
-            NodeList treeElList = treeElement.getChildNodes();
-
-            for (int te = 0; te < treeElList.getLength(); te++) {
-                Node treeNode = treeElList.item(te);
-                if (treeNode.getNodeType() == Node.ELEMENT_NODE) {
-                    Element eElement = (Element) treeNode;
-                    chList.add(eElement);
-                }
-            }
-
-            elNum = chList.size();
-            for (int t=0; t<chList.size(); t++) {
-                if (chList.get(t).hasChildNodes()) {
-                    elNum += childrenNumber(chList.get(t), elNum);
-                }
-            }
-        }
-        return elNum;
-    }
-
+    /**
+     * Removes attributes that we consider unnecessary for our treebank, adds "start" and "finish" attributes
+     * @param treeElement list of all elements found in a sentence
+     * @param tokensInTotal number of child tokens for a given element
+     */
     public static void removeElementAttributes(Element treeElement, Integer tokensInTotal) {
         treeElement.removeAttribute("id");
         treeElement.removeAttribute("head");
-
-
-
         if (treeElement.hasChildNodes()) {
             treeElement.setAttribute("start", String.valueOf(addStartAttributes(treeElement, tokensInTotal)));
             treeElement.setAttribute("finish", String.valueOf(addFinishAttributes(treeElement, 0)));
-
-
-            //treeElement.setAttribute("num", String.valueOf(tokenNumbering));
-
             NodeList treeElList = treeElement.getChildNodes();
             for (int te = 0; te < treeElList.getLength(); te++) {
                 Node treeNode = treeElList.item(te);
@@ -139,9 +103,6 @@ public class PerseusConverter {
                     eElement.removeAttribute("id");
                     eElement.removeAttribute("head");
 
-                    //tokenNumbering += 1;
-                    //eElement.setAttribute("num", String.valueOf(tokenNumbering));
-
                     // we repeat this procedure for each child
                     if (eElement.hasChildNodes()) {
                         removeElementAttributes(eElement, tokensInTotal);
@@ -149,27 +110,25 @@ public class PerseusConverter {
                     else {
                         eElement.setAttribute("start", eElement.getAttribute("order"));
                         eElement.setAttribute("finish", eElement.getAttribute("order"));
-
                     }
-
                 }
             }
         }
         else {
             treeElement.setAttribute("start", treeElement.getAttribute("order"));
             treeElement.setAttribute("finish", treeElement.getAttribute("order"));
-
-
-
         }
     }
 
-    public static Integer addNumAttribute(Element treeElement, Integer curNumValue) {
-        //treeElement.removeAttribute("id");
-        //treeElement.removeAttribute("head");
+    /**
+     * Adds "num" attributes
+     * @param treeElement an XML element
+     * @param curNumValue "num" attribute of the given element
+     * @return "num" attribute value of the last child of the given element
+     */
+    public static Integer addNumAttributes(Element treeElement, Integer curNumValue) {
         curNumValue += 1;
         treeElement.setAttribute("num", String.valueOf(curNumValue));
-
         if (treeElement.hasChildNodes()) {
             NodeList treeElList = treeElement.getChildNodes();
             for (int te = 0; te < treeElList.getLength(); te++) {
@@ -177,45 +136,26 @@ public class PerseusConverter {
                 if (treeNode.getNodeType() == Node.ELEMENT_NODE) {
                     Element eElement = (Element) treeNode;
 
-                    // we need to remove attributes that are not going to be used by our system
-                    //eElement.removeAttribute("id");
-                    //eElement.removeAttribute("head");
-
-
-
-                    //tokenNumbering += 1;
-                    //eElement.setAttribute("num", String.valueOf(tokenNumbering));
-
                     // we repeat this procedure for each child
                     if (eElement.hasChildNodes()) {
-                        curNumValue = addNumAttribute(eElement, curNumValue);
+                        curNumValue = addNumAttributes(eElement, curNumValue);
                     }
                     else {
                         curNumValue += 1;
                         eElement.setAttribute("num", String.valueOf(curNumValue));
                     }
-                    //else {
-                    //    eElement.setAttribute("start", eElement.getAttribute("order"));
-                    //    eElement.setAttribute("finish", eElement.getAttribute("order"));
-
-                    //}
-
                 }
             }
-        } //else {
-        //   curNumValue += 1;
-        //    treeElement.setAttribute("num", String.valueOf(curNumValue));
-        //}
-        //else {
-        //    treeElement.setAttribute("start", treeElement.getAttribute("order"));
-        //    treeElement.setAttribute("finish", treeElement.getAttribute("order"));
-
-
-
-        //}
+        }
         return curNumValue;
     }
 
+    /**
+     * Adds "start" attributes
+     * @param treeElement an XML element
+     * @param minValue minimal value of the "order" attribute (among all children of the given element)
+     * @return "start" attribute of the given element
+     */
     public static Integer addStartAttributes(Element treeElement, Integer minValue) {
         if (treeElement.hasChildNodes()) {
             NodeList treeElList = treeElement.getChildNodes();
@@ -251,6 +191,12 @@ public class PerseusConverter {
         return minValue;
     }
 
+    /**
+     * Adds "finish" attributes
+     * @param treeElement an XML element
+     * @param maxValue maximal value of the "order" attribute (among all children of the given element)
+     * @return "finish" attribute of the given element
+     */
     public static Integer addFinishAttributes(Element treeElement, Integer maxValue) {
         if (treeElement.hasChildNodes()) {
             NodeList treeElList = treeElement.getChildNodes();
@@ -286,8 +232,10 @@ public class PerseusConverter {
         return maxValue;
     }
 
-
-
+    /**
+     * Main method of the class
+     * @param args command line arguments. It takes exactly two parameters: source folder with the treebank files, and the name of the final treebank
+     */
     public static void main(String[] args) throws ParserConfigurationException, IOException, SAXException, TransformerException {
         if (args == null) {
             System.err.println("Missing argument(s)!\n");
@@ -302,8 +250,6 @@ public class PerseusConverter {
             String outputFile = args[1];
             System.out.println("Opening the folder containing XML files: " + inputFolder);
             System.out.println("**********************************************************");
-
-
 
             // First we need to create a new XML file for the output
             DocumentBuilderFactory dbOutputFactory = DocumentBuilderFactory.newInstance();
@@ -329,9 +275,7 @@ public class PerseusConverter {
                 <word> nodes with all their attributes
                 */
                 Element root = docInput.getDocumentElement();
-                //root.has
                 NodeList testList = root.getChildNodes();
-                //nList.
 
                 for (int ri = 0; ri < testList.getLength(); ri++) {
                     Node immediateChildNode = testList.item(ri);
@@ -347,21 +291,16 @@ public class PerseusConverter {
                 }
                 NodeList nList = root.getChildNodes();
 
-
-
-
                 for (int si = 0; si < nList.getLength(); si++) {
                     Node nNode = nList.item(si); // sentence nodes
                     if (nNode.getNodeType() == Node.ELEMENT_NODE) {
-
-                        //Map<String, String> nodeXMLattributes = new HashMap<String, String>();
                         Element eElement = (Element) nNode;
                         String eName = eElement.getNodeName();
+                        // ignore this information
                         if ((eName.equals("annotator")) || (eName.equals("primary")) || (eName.equals("secondary"))) {
                             continue;
                         }
                         NamedNodeMap curAttributes = eElement.getAttributes();
-
                         if (curAttributes.getLength()>0) {
                             Element sentElement = docOutput.createElement("sent");
                             Element consElement = docOutput.createElement("cons");
@@ -383,14 +322,13 @@ public class PerseusConverter {
                             // Now we create a nested structure for the words
                             NodeList nChildList = nNode.getChildNodes(); // getting children of a sentence
                             List<Element> elList = new ArrayList<Element>(); // store all elements in a list
-
-
                             for (int wi = 0; wi < nChildList.getLength(); wi++) {
                                 Node nChildNode = nChildList.item(wi); // words nodes
                                 if (nChildNode.getNodeType() == Node.ELEMENT_NODE) {
 
                                     Element eChildElement = (Element) nChildNode;
                                     String cName = eChildElement.getNodeName();
+                                    // ignore this information
                                     if ((cName.equals("annotator")) || (cName.equals("primary")) || (cName.equals("secondary"))) {
                                         continue;
                                     }
@@ -408,6 +346,7 @@ public class PerseusConverter {
                                         }
                                         if (curNodeName.equals("postag")) {
                                             curNodeName = "pos";
+                                            // this POS usually corresponds to punctuation marks
                                             if (curNodeValue.equals("u--------")) {
                                                 tokenElement.setAttribute("_punct", "true");
                                             }
@@ -416,7 +355,6 @@ public class PerseusConverter {
                                             curNodeName = "edge";
                                         }
 
-                                        //tokenElement.setAttribute(curChildAttributes.item(attr).getNodeName(), curChildAttributes.item(attr).getNodeValue());
                                         tokenElement.setAttribute(curNodeName, curNodeValue);
                                         if (curNodeName.equals("head")) {
                                             if (curNodeValue.equals("")) {
@@ -424,24 +362,26 @@ public class PerseusConverter {
                                             }
                                         }
                                     }
-                                    String tokenWordId = tokenElement.getAttribute("id");
-                                    //System.out.println(tokenWordId);
-                                    if (tokenWordId.equals("1")) {
-                                        tokenElement.setAttribute("text", tokenElement.getAttribute("token") + " ");
+
+                                    // handling elliptic constructions: missing token is hidden, its value is placed to the "recovered" attribute
+                                    if (tokenElement.hasAttribute("insertion_id")) {
+                                        tokenElement.setAttribute("recovered", tokenElement.getAttribute("token"));
+                                        tokenElement.setAttribute("token", "--");
+                                        tokenElement.removeAttribute("insertion_id");
+                                    }
+
+                                    // adding "text" attribute
+                                    if ((tokenElement.getAttribute("id").equals("1")) || (tokenElement.hasAttribute("punct"))) {
+                                        tokenElement.setAttribute("text", tokenElement.getAttribute("token"));
                                     }
                                     else {
                                         tokenElement.setAttribute("text", " " + tokenElement.getAttribute("token"));
                                     }
-                                    //tokenElement.setAttribute("start", String.valueOf(tokenCounter-1));
-                                    //tokenElement.setAttribute("num", String.valueOf(tokenCounter));
-                                    //tokenElement.setAttribute("finish", "");
                                     tokenElement.setAttribute("order", String.valueOf(tokenCounter));
                                     elList.add(tokenElement);
                                 }
                             }
                             consElement.setAttribute("finish", String.valueOf(tokenCounter-1));
-
-
                             Integer closeToRootCount = 0;
                             Integer curChildNum = 0;
                             for (int ri = 0; ri < elList.size(); ri++) {
@@ -456,52 +396,35 @@ public class PerseusConverter {
                                         }
                                     }
                                     Element closeToRootElement = attachedToRoot;
-                                    List<Element> itsChildren = findAllChildren(elList,closeToRootElement.getAttribute("id"), Integer.valueOf(consElement.getAttribute("num")));
+                                    List<Element> itsChildren = findAllChildren(elList,closeToRootElement.getAttribute("id"));
                                     for (int chidInd = 0; chidInd < itsChildren.size(); chidInd++) {
                                         closeToRootElement.appendChild(itsChildren.get(chidInd));
                                     }
-                                    removeElementAttributes(closeToRootElement, tokenCounter);
+                                    removeElementAttributes(closeToRootElement, tokenCounter); // remove irrelevant for us attributes
                                     if (closeToRootCount > 1) {
-                                        curChildNum = addNumAttribute(closeToRootElement, curChildNum);
+                                        curChildNum = addNumAttributes(closeToRootElement, curChildNum);
                                     }
                                     else {
-                                        curChildNum = addNumAttribute(closeToRootElement, Integer.valueOf(consElement.getAttribute("num")));
+                                        curChildNum = addNumAttributes(closeToRootElement, Integer.valueOf(consElement.getAttribute("num")));
                                     }
-
-                                    consElement.appendChild(closeToRootElement);
-                                    sentElement.appendChild(consElement);
+                                    consElement.appendChild(closeToRootElement); // token elements that belong to the main cons element
+                                    sentElement.appendChild(consElement); // adding the main cons element to the current sentence element
                                 }
                             }
-
                             rootElement.appendChild(sentElement);
                         }
-
                     }
-
-
                 }
-
-
-                //if (xi>5) {
-                //    break;
-                //}
-
-
-
             }
+            // saving our results into XML
             TransformerFactory transformerFactory = TransformerFactory.newInstance();
             Transformer transformer = transformerFactory.newTransformer();
-            transformer.setOutputProperty(OutputKeys.INDENT,"yes");
+            transformer.setOutputProperty(OutputKeys.INDENT,"yes"); // setting line breaks
             transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "2");
             DOMSource source = new DOMSource(docOutput);
             StreamResult result = new StreamResult(new File(outputFile));
             transformer.transform(source, result);
             System.out.println("Writing data into the file: " + outputFile);
         }
-
-
-
-
     }
-
 }
