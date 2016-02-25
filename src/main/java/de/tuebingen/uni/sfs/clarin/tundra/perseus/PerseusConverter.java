@@ -15,9 +15,7 @@ import javax.xml.transform.stream.StreamResult;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 /**
  * Created by megalex on 19/02/16.
@@ -331,8 +329,23 @@ public class PerseusConverter {
                 <word> nodes with all their attributes
                 */
                 Element root = docInput.getDocumentElement();
-                NodeList nList = root.getChildNodes();
+                //root.has
+                NodeList testList = root.getChildNodes();
+                //nList.
 
+                for (int ri = 0; ri < testList.getLength(); ri++) {
+                    Node immediateChildNode = testList.item(ri);
+                    if (immediateChildNode.getNodeType() == Node.ELEMENT_NODE) {
+                        if (immediateChildNode.getNodeName().equals("sentence")) {
+                            break;
+                        }
+                        if (immediateChildNode.getNodeName().equals("body")) {
+                            root = (Element) immediateChildNode;
+                            break;
+                        }
+                    }
+                }
+                NodeList nList = root.getChildNodes();
 
 
 
@@ -341,8 +354,12 @@ public class PerseusConverter {
                     Node nNode = nList.item(si); // sentence nodes
                     if (nNode.getNodeType() == Node.ELEMENT_NODE) {
 
-                        Map<String, String> nodeXMLattributes = new HashMap<String, String>();
+                        //Map<String, String> nodeXMLattributes = new HashMap<String, String>();
                         Element eElement = (Element) nNode;
+                        String eName = eElement.getNodeName();
+                        if ((eName.equals("annotator")) || (eName.equals("primary")) || (eName.equals("secondary"))) {
+                            continue;
+                        }
                         NamedNodeMap curAttributes = eElement.getAttributes();
 
                         if (curAttributes.getLength()>0) {
@@ -373,6 +390,11 @@ public class PerseusConverter {
                                 if (nChildNode.getNodeType() == Node.ELEMENT_NODE) {
 
                                     Element eChildElement = (Element) nChildNode;
+                                    String cName = eChildElement.getNodeName();
+                                    if ((cName.equals("annotator")) || (cName.equals("primary")) || (cName.equals("secondary"))) {
+                                        continue;
+                                    }
+
                                     NamedNodeMap curChildAttributes = eChildElement.getAttributes();
                                     Element tokenElement = docOutput.createElement("token");
                                     tokenCounter += 1;
