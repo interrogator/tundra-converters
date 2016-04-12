@@ -261,6 +261,8 @@ public class PerseusConverter {
             docOutput.appendChild(rootElement);
             Integer sentenceCounter = 0;
             Integer tokenCounter = 0;
+            Integer oldSentenceCounter = 0;
+            Integer oldTokenCounter = 0;
 
             // Reading files from a given folder (we are going to merge them together in one treebank file)
             List<String> xmlFiles = getFilesList(inputFolder);
@@ -316,6 +318,7 @@ public class PerseusConverter {
                             for (int attr = 0; attr < curAttributes.getLength(); attr++) {
                                 if (curAttributes.item(attr).getNodeName().equals("id") == false) {
                                     sentElement.setAttribute(curAttributes.item(attr).getNodeName(), curAttributes.item(attr).getNodeValue());
+                                    consElement.setAttribute(curAttributes.item(attr).getNodeName(), curAttributes.item(attr).getNodeValue());
                                 }
                             }
 
@@ -365,7 +368,10 @@ public class PerseusConverter {
 
                                     // handling elliptic constructions: missing token is hidden, its value is placed to the "recovered" attribute
                                     if (tokenElement.hasAttribute("insertion_id")) {
-                                        tokenElement.setAttribute("recovered", tokenElement.getAttribute("token"));
+                                        String recoveredValue = tokenElement.getAttribute("token");
+                                        //recoveredValue = recoveredValue.replace("[", "");
+                                        //recoveredValue = recoveredValue.replace("]", "");
+                                        tokenElement.setAttribute("recovered", recoveredValue);
                                         tokenElement.setAttribute("token", "--");
                                         tokenElement.removeAttribute("insertion_id");
                                     }
@@ -386,6 +392,10 @@ public class PerseusConverter {
                             Integer curChildNum = 0;
                             for (int ri = 0; ri < elList.size(); ri++) {
                                 Element attachedToRoot = elList.get(ri);
+                                //System.out.println(attachedToRoot.getAttribute("head"));
+                                //if (attachedToRoot.getAttribute("head").equals("")) {
+                                //    attachedToRoot.setAttribute("head", "0");
+                                //}
                                 if (attachedToRoot.getAttribute("head").equals("0")) {
                                     closeToRootCount += 1;
                                     List<Element> closeToRootChildren = new ArrayList<Element>();
@@ -411,7 +421,22 @@ public class PerseusConverter {
                                     sentElement.appendChild(consElement); // adding the main cons element to the current sentence element
                                 }
                             }
-                            rootElement.appendChild(sentElement);
+                            /*if (sentElement.hasChildNodes()==false) {
+                                System.out.println("Empty sentence");
+                                System.out.println(xmlFiles.get(xi));
+                                System.out.println(sentenceCounter);
+                                System.out.println(closeToRootCount);
+                            }*/
+
+                            if (sentElement.hasChildNodes()==true) {
+                                rootElement.appendChild(sentElement);
+                                oldSentenceCounter = sentenceCounter;
+                                oldTokenCounter = tokenCounter;
+                            }
+                            else {
+                                sentenceCounter = oldSentenceCounter;
+                                tokenCounter = oldTokenCounter;
+                            }
                         }
                     }
                 }
