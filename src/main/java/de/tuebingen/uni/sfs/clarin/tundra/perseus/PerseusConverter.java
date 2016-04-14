@@ -347,11 +347,212 @@ public class PerseusConverter {
                                         if (curNodeName.equals("form")) {
                                             curNodeName = "token";
                                         }
+                                        // Decomposing the so-called part of speech tags.
+                                        // They actually include not only PoS info, but also info about morphology.
                                         if (curNodeName.equals("postag")) {
-                                            curNodeName = "pos";
-                                            // this POS usually corresponds to punctuation marks
-                                            if (curNodeValue.equals("u--------")) {
-                                                tokenElement.setAttribute("_punct", "true");
+                                            curNodeName = "categories";
+
+                                            for (int posLetter = 0; posLetter < curNodeValue.length(); posLetter++) {
+                                                String posPart = curNodeValue.substring(posLetter,posLetter+1);
+
+                                                // NOW YOU ARE GOING TO SEE A LOT OF CONDITIONS
+
+                                                // Letter that corresponds to the actual part of speech tag
+                                                String posTag = posPart;
+                                                if (posLetter == 0) {
+                                                    if (posPart.equals("n")) {
+                                                        posTag = "noun";
+                                                    }
+                                                    if (posPart.equals("v")) {
+                                                        posTag = "verb";
+                                                    }
+                                                    if (posPart.equals("a")) {
+                                                        posTag = "adjective";
+                                                    }
+                                                    if (posPart.equals("d")) {
+                                                        posTag = "adverb";
+                                                    }
+                                                    if (posPart.equals("l")) {
+                                                        posTag = "article";
+                                                    }
+                                                    if (posPart.equals("g")) {
+                                                        posTag = "particle";
+                                                    }
+                                                    if (posPart.equals("c")) {
+                                                        posTag = "conjunction";
+                                                    }
+                                                    if (posPart.equals("r")) {
+                                                        posTag = "adposition";
+                                                    }
+                                                    if (posPart.equals("p")) {
+                                                        posTag = "pronoun";
+                                                    }
+                                                    if (posPart.equals("m")) {
+                                                        posTag = "numeral";
+                                                    }
+                                                    if (posPart.equals("i")) {
+                                                        posTag = "interjection";
+                                                    }
+                                                    if (posPart.equals("u")) {
+                                                        posTag = "punctuation";
+                                                        tokenElement.setAttribute("_punct", "true");
+                                                    }
+                                                    // this POS usually corresponds to punctuation marks
+                                                    //if (curNodeValue.equals("u--------")) {
+
+                                                    //}
+                                                    tokenElement.setAttribute("pos", posTag);
+                                                }
+
+                                                // Person
+                                                String personTag = posPart;
+                                                if (posLetter == 1) {
+                                                    if (posPart.equals("1")) {
+                                                        personTag = "first";
+                                                    }
+                                                    if (posPart.equals("2")) {
+                                                        personTag = "second";
+                                                    }
+                                                    if (posPart.equals("3")) {
+                                                        personTag = "third";
+                                                    }
+                                                    tokenElement.setAttribute("person", personTag);
+                                                }
+
+                                                // Number
+                                                String numberTag = posPart;
+                                                if (posLetter == 2) {
+                                                    if (posPart.equals("s")) {
+                                                        numberTag = "singular";
+                                                    }
+                                                    if (posPart.equals("p")) {
+                                                        numberTag = "plural";
+                                                    }
+                                                    if (posPart.equals("d")) {
+                                                        numberTag = "dual";
+                                                    }
+                                                    tokenElement.setAttribute("number", numberTag);
+                                                }
+
+                                                // Tense
+                                                String tenseTag = posPart;
+                                                if (posLetter == 3) {
+                                                    if (posPart.equals("p")) {
+                                                        tenseTag = "present";
+                                                    }
+                                                    if (posPart.equals("i")) {
+                                                        tenseTag = "imperfect";
+                                                    }
+                                                    if (posPart.equals("r")) {
+                                                        tenseTag = "perfect";
+                                                    }
+                                                    if (posPart.equals("l")) {
+                                                        tenseTag = "pluperfect";
+                                                    }
+                                                    if (posPart.equals("t")) {
+                                                        tenseTag = "future perfect";
+                                                    }
+                                                    if (posPart.equals("f")) {
+                                                        tenseTag = "future";
+                                                    }
+                                                    if (posPart.equals("a")) {
+                                                        tenseTag = "aorist";
+                                                    }
+                                                    tokenElement.setAttribute("tense", tenseTag);
+                                                }
+
+                                                // Mood
+                                                String moodTag = posPart;
+                                                if (posLetter == 4) {
+                                                    if (posPart.equals("i")) {
+                                                        moodTag = "indicative";
+                                                    }
+                                                    if (posPart.equals("s")) {
+                                                        moodTag = "subjunctive";
+                                                    }
+                                                    if (posPart.equals("o")) {
+                                                        moodTag = "optative";
+                                                    }
+                                                    if (posPart.equals("n")) {
+                                                        moodTag = "infinitive";
+                                                    }
+                                                    if (posPart.equals("m")) {
+                                                        moodTag = "imperative";
+                                                    }
+                                                    if (posPart.equals("p")) {
+                                                        moodTag = "participle";
+                                                    }
+                                                    tokenElement.setAttribute("mood", moodTag);
+                                                }
+
+                                                // Voice
+                                                String voiceTag = posPart;
+                                                if (posLetter == 5) {
+                                                    if (posPart.equals("a")) {
+                                                        voiceTag = "active";
+                                                    }
+                                                    if (posPart.equals("p")) {
+                                                        voiceTag = "passive";
+                                                    }
+                                                    if (posPart.equals("m")) {
+                                                        voiceTag = "middle";
+                                                    }
+                                                    if (posPart.equals("e")) {
+                                                        voiceTag = "medio-passive";
+                                                    }
+                                                    tokenElement.setAttribute("voice", voiceTag);
+                                                }
+
+                                                // Gender
+                                                String genderTag = posPart;
+                                                if (posLetter == 6) {
+                                                    if (posPart.equals("m")) {
+                                                        genderTag = "masculine";
+                                                    }
+                                                    if (posPart.equals("f")) {
+                                                        genderTag = "feminine";
+                                                    }
+                                                    if (posPart.equals("n")) {
+                                                        genderTag = "neuter";
+                                                    }
+                                                    tokenElement.setAttribute("gender", genderTag);
+                                                }
+
+                                                // Case
+                                                String caseTag = posPart;
+                                                if (posLetter == 7) {
+                                                    if (posPart.equals("n")) {
+                                                        caseTag = "nominative";
+                                                    }
+                                                    if (posPart.equals("g")) {
+                                                        caseTag = "genitive";
+                                                    }
+                                                    if (posPart.equals("d")) {
+                                                        caseTag = "dative";
+                                                    }
+                                                    if (posPart.equals("a")) {
+                                                        caseTag = "accusative";
+                                                    }
+                                                    if (posPart.equals("v")) {
+                                                        caseTag = "vocative";
+                                                    }
+                                                    tokenElement.setAttribute("case", caseTag);
+                                                }
+
+                                                // Degree
+                                                String degreeTag = posPart;
+                                                if (posLetter == 8) {
+                                                    if (posPart.equals("p")) {
+                                                        degreeTag = "positive";
+                                                    }
+                                                    if (posPart.equals("c")) {
+                                                        degreeTag = "comparative";
+                                                    }
+                                                    if (posPart.equals("s")) {
+                                                        degreeTag = "superlative";
+                                                    }
+                                                    tokenElement.setAttribute("degree", degreeTag);
+                                                }
                                             }
                                         }
                                         if (curNodeName.equals("relation")) {
