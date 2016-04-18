@@ -258,7 +258,6 @@ public class TCFconverter {
 			createFakeDependencyList(i);
 			DepNode root = new DepNode();
 			root.setId("ROOT");
-                        root.setOrder(num);
 			buildFakeTree(root);
 			setStartFinishValues(root);
 			appendDependencySent(root, 0);
