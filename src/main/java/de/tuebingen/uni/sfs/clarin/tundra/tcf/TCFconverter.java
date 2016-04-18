@@ -14,7 +14,10 @@ package de.tuebingen.uni.sfs.clarin.tundra.tcf;
  *              in designing and debugging my program.
  * 
  * I made some changes for morphology -- Scott
- * Changed to create a 'fake' dependency tree if dependency layer is missing -- Valentin
+ * 
+ * Changed to create a 'fake' dependency tree if dependency layer is missing 
+ * Changed to include named entity tags and color highlighting from TCF in TundraXML
+ * -- Valentin
  */
 
 import java.io.BufferedWriter;
@@ -54,6 +57,7 @@ public class TCFconverter {
 	private PosTagsLayerStored ptl;
 	private TokensLayerStored tl;
         private SentencesLayerStored sl;
+        private NamedEntitiesLayerStored nel;
 
 	private StringBuilder curSent;
 	private String text;
@@ -117,7 +121,8 @@ public class TCFconverter {
                 }
 		ll = tc.getLemmasLayer();
 		ml = tc.getMorphologyLayer(); 
-		ptl = tc.getPosTagsLayer();                
+		ptl = tc.getPosTagsLayer();  
+                nel = tc.getNamedEntitiesLayer();
 		if (constituencyTree) {
 			cpl = tc.getConstituentParsingLayer();
 			if (cpl == null) {
@@ -195,7 +200,8 @@ public class TCFconverter {
                 }
 		ll = tc.getLemmasLayer();
 		ml = tc.getMorphologyLayer(); //!!skipping morph until I can debug
-		ptl = tc.getPosTagsLayer();                
+		ptl = tc.getPosTagsLayer(); 
+                nel = tc.getNamedEntitiesLayer();
 		if (constituencyTree) {
 			cpl = tc.getConstituentParsingLayer();
 			if (cpl == null) {
@@ -324,6 +330,9 @@ public class TCFconverter {
 			if (ptl != null && ptl.getTag(t) != null) {
 				curSent.append(formatAttr("pos", ptl.getTag(t).getString()));
 			}
+                        if(nel != null){
+                                        writeNamedEntityInfo(t);
+                                    }
 			if (ml != null && ml.getAnalysis(t) != null) {
 				Feature[] fs = ml.getAnalysis(t).getFeatures();
                                 Set<String> added = new HashSet<String>(); //to prevent morphology overloading
@@ -672,6 +681,9 @@ public class TCFconverter {
                                             curSent.append(formatAttr(
                                                             "pos", ptl.getTag(t[i]).getString()));
                                     }
+                                    if(nel != null){
+                                        writeNamedEntityInfo(t[i]);
+                                    }
                                     t[i].getID();
                             }
                             // append morph attributes
@@ -705,6 +717,39 @@ public class TCFconverter {
                     }
                 }
 	}
+        /**
+         * Append named entity attribute and corresponding color attribute for a token 
+         * ( Call only if NamedEntityLayer is present )
+         * @param t the token being written
+         */
+        private void writeNamedEntityInfo(Token t){
+            if(nel.getEntity(t)!=null){
+                curSent.append(formatAttr("_ne", nel.getEntity(t).getType()));
+                // green
+                if(nel.getEntity(t).getType().equals("GPE")){
+                    curSent.append(formatAttr("_color", "#00ff80"));
+                }
+                // pink
+                else if(nel.getEntity(t).getType().equals("PER")){
+                    curSent.append(formatAttr("_color", "#ff80ff"));
+                }
+                // yellow
+                else if(nel.getEntity(t).getType().equals("LOC")){
+                    curSent.append(formatAttr("_color", "#ffff40"));
+                }
+                // blue
+                else if(nel.getEntity(t).getType().equals("ORG")){
+                    curSent.append(formatAttr("_color", "#0080ff"));
+                }
+                // orange
+                else if(nel.getEntity(t).getType().equals("OTH")){
+                    curSent.append(formatAttr("_color", "#ff8000"));
+                }
+                else{ //same color as 'other' category
+                    curSent.append(formatAttr("_color", "#ff8000"));
+                }               
+            }
+        }
 
 	/**
 	 * Return the text value for <i>token</i>. (Works only if invoked 
