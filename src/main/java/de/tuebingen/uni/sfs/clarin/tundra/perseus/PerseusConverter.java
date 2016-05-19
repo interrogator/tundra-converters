@@ -393,6 +393,9 @@ public class PerseusConverter {
                                                     if (posPart.equals("i")) {
                                                         posTag = "interjection";
                                                     }
+                                                    if (posPart.equals("e")) {
+                                                        posTag = "exclamation";
+                                                    }
                                                     if (posPart.equals("u")) {
                                                         posTag = "punctuation";
                                                         tokenElement.setAttribute("_punct", "true");
@@ -482,6 +485,12 @@ public class PerseusConverter {
                                                     if (posPart.equals("p")) {
                                                         moodTag = "participle";
                                                     }
+                                                    if (posPart.equals("d")) {
+                                                        moodTag = "gerund";
+                                                    }
+                                                    if (posPart.equals("g")) {
+                                                        moodTag = "gerundive";
+                                                    }
                                                     tokenElement.setAttribute("mood", moodTag);
                                                 }
 
@@ -499,6 +508,9 @@ public class PerseusConverter {
                                                     }
                                                     if (posPart.equals("e")) {
                                                         voiceTag = "medio-passive";
+                                                    }
+                                                    if (posPart.equals("d")) {
+                                                        voiceTag = "deponent";
                                                     }
                                                     tokenElement.setAttribute("voice", voiceTag);
                                                 }
@@ -535,6 +547,12 @@ public class PerseusConverter {
                                                     }
                                                     if (posPart.equals("v")) {
                                                         caseTag = "vocative";
+                                                    }
+                                                    if (posPart.equals("b")) {
+                                                        caseTag = "ablative";
+                                                    }
+                                                    if (posPart.equals("l")) {
+                                                        caseTag = "locative";
                                                     }
                                                     tokenElement.setAttribute("case", caseTag);
                                                 }
