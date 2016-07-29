@@ -14,20 +14,29 @@ package de.tuebingen.uni.sfs.clarin.tundra.tcf;
  *              in designing and debugging my program.
  * 
  * I made some changes for morphology -- Scott
+ * 
+ * Changed to create a 'fake' dependency tree if dependency layer is missing 
+ * Changed to include named entity tags and color highlighting from TCF in TundraXML
+ * -- Valentin
  */
 
-import eu.clarin.weblicht.wlfxb.io.WLDObjector;
-import eu.clarin.weblicht.wlfxb.io.WLFormatException;
-import eu.clarin.weblicht.wlfxb.tc.api.*;
-import eu.clarin.weblicht.wlfxb.tc.xb.*;
-import eu.clarin.weblicht.wlfxb.xb.WLData;
-
-import java.io.*;
+import java.io.BufferedWriter;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.OutputStreamWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.regex.Pattern;
+
+import eu.clarin.weblicht.wlfxb.io.*;
+import eu.clarin.weblicht.wlfxb.tc.api.*;
+import eu.clarin.weblicht.wlfxb.tc.xb.*;
+import eu.clarin.weblicht.wlfxb.xb.WLData;
+import eu.clarin.weblicht.wlfxb.tc.xb.LemmasLayerStored;
+import eu.clarin.weblicht.wlfxb.tc.xb.SentencesLayerStored;
+import java.io.FileOutputStream;
 
 public class TCFconverter {
 	private static final String HELP = 
@@ -47,6 +56,8 @@ public class TCFconverter {
 	private MorphologyLayerStored ml;
 	private PosTagsLayerStored ptl;
 	private TokensLayerStored tl;
+        private SentencesLayerStored sl;
+        private NamedEntitiesLayerStored nel;
 
 	private StringBuilder curSent;
 	private String text;
@@ -58,6 +69,7 @@ public class TCFconverter {
 	private boolean checkVar;
 	private String lastTextValue;
 	private HashMap<String, ArrayList<DepNode>> dependencyHashMap;
+        private ArrayList<DepNode> fakeDependencyList;
 	private HashMap<Integer, String> textValues;
         private int lastOrder;
 
@@ -109,7 +121,8 @@ public class TCFconverter {
                 }
 		ll = tc.getLemmasLayer();
 		ml = tc.getMorphologyLayer(); 
-		ptl = tc.getPosTagsLayer();
+		ptl = tc.getPosTagsLayer();  
+                nel = tc.getNamedEntitiesLayer();
 		if (constituencyTree) {
 			cpl = tc.getConstituentParsingLayer();
 			if (cpl == null) {
@@ -127,8 +140,13 @@ public class TCFconverter {
 			}
 			dpl = tc.getDependencyParsingLayer();
 			if (dpl == null) {
-				throw new MissingLayerException(
-						"The dependency parsing layer is missing!");
+                            sl = tc.getSentencesLayer();
+                            if (sl == null) {
+				throw new MissingLayerException("The sentence layer is missing!");
+			}
+                            createFakeDependencyTree();
+//				throw new MissingLayerException(
+//						"The dependency parsing layer is missing!");
 			}
 			createDependencyTree();
 		}
@@ -182,7 +200,8 @@ public class TCFconverter {
                 }
 		ll = tc.getLemmasLayer();
 		ml = tc.getMorphologyLayer(); //!!skipping morph until I can debug
-		ptl = tc.getPosTagsLayer();
+		ptl = tc.getPosTagsLayer(); 
+                nel = tc.getNamedEntitiesLayer();
 		if (constituencyTree) {
 			cpl = tc.getConstituentParsingLayer();
 			if (cpl == null) {
@@ -200,8 +219,13 @@ public class TCFconverter {
 			}
 			dpl = tc.getDependencyParsingLayer();
 			if (dpl == null) {
-				throw new MissingLayerException(
-						"The dependency parsing layer is missing!");
+                            sl = tc.getSentencesLayer();
+                            if (sl == null) {
+				throw new MissingLayerException("The sentence layer is missing!");
+			}
+                            createFakeDependencyTree();
+//				throw new MissingLayerException(
+//						"The dependency parsing layer is missing!");
 			}
 			createDependencyTree();
 		}
@@ -230,6 +254,27 @@ public class TCFconverter {
 		out.write("</corpus>");
 		out.close();
 	}
+        
+        private void createFakeDependencyTree()
+                throws IOException, UnknownTokenException {
+            out.write("<?xml version=\"1.0\"?>\n");
+		out.write("<corpus>\n");
+                //System.err.println("Making dependency treebank...");
+		for (int i = 0; i < sl.size(); i++) {
+			createFakeDependencyList(i);
+			DepNode root = new DepNode();
+			root.setId("ROOT");
+			buildFakeTree(root);
+			setStartFinishValues(root);
+			appendDependencySent(root, 0);
+			out.write(curSent.toString());
+			sentenceID += 1;
+			curSent = new StringBuilder();
+		}
+		out.write("</corpus>");
+		out.close();
+            
+        }
 
 	/**
 	 * Append a dependency sent element to curSent.
@@ -285,6 +330,9 @@ public class TCFconverter {
 			if (ptl != null && ptl.getTag(t) != null) {
 				curSent.append(formatAttr("pos", ptl.getTag(t).getString()));
 			}
+                        if(nel != null){
+                                        writeNamedEntityInfo(t);
+                                    }
 			if (ml != null && ml.getAnalysis(t) != null) {
 				Feature[] fs = ml.getAnalysis(t).getFeatures();
                                 Set<String> added = new HashSet<String>(); //to prevent morphology overloading
@@ -334,6 +382,16 @@ public class TCFconverter {
 			}
 		}
 	}
+        
+        /**
+	 * Build a DepNode tree from the current <i>fakeDependencyList</i>.
+	 * @param node start node - the artificial root node
+	 */
+        private void buildFakeTree(DepNode node) {
+		for(DepNode dn : fakeDependencyList){
+                    node.addChild(dn);
+                }
+	}
 
 	/**
 	 * Traverse an existing DepNode tree and set all <i>start</i> and 
@@ -372,6 +430,24 @@ public class TCFconverter {
 			return rvalNonLeaf;
 		}
 	}
+        /**
+	 * Create the fake dependency list for the sentence at 
+	 * <i>sentIndex</i>.
+	 * @param sentIndex index of the sentence
+	 */
+        private void createFakeDependencyList(int sentIndex){
+            fakeDependencyList = new ArrayList<DepNode>();
+            Token[] st = sl.getTokens(sl.getSentence(sentIndex));            
+            for(Token t : st){               
+                DepNode node = new DepNode(t);
+                Token data = node.getData();
+		if (data != null) {
+			node.setId(data.getID());
+			node.setOrder(data.getOrder());
+		}               
+                fakeDependencyList.add(node);               
+            }            
+        }
 
 	/**
 	 * Create the dependency hash map for the dependency parse at 
@@ -605,6 +681,9 @@ public class TCFconverter {
                                             curSent.append(formatAttr(
                                                             "pos", ptl.getTag(t[i]).getString()));
                                     }
+                                    if(nel != null){
+                                        writeNamedEntityInfo(t[i]);
+                                    }
                                     t[i].getID();
                             }
                             // append morph attributes
@@ -638,6 +717,39 @@ public class TCFconverter {
                     }
                 }
 	}
+        /**
+         * Append named entity attribute and corresponding color attribute for a token 
+         * ( Call only if NamedEntityLayer is present )
+         * @param t the token being written
+         */
+        private void writeNamedEntityInfo(Token t){
+            if(nel.getEntity(t)!=null){
+                curSent.append(formatAttr("_ne", nel.getEntity(t).getType()));
+                // green
+                if(nel.getEntity(t).getType().equals("GPE")){
+                    curSent.append(formatAttr("_color", "#00ff80"));
+                }
+                // pink
+                else if(nel.getEntity(t).getType().equals("PER")){
+                    curSent.append(formatAttr("_color", "#ff80ff"));
+                }
+                // yellow
+                else if(nel.getEntity(t).getType().equals("LOC")){
+                    curSent.append(formatAttr("_color", "#ffff40"));
+                }
+                // blue
+                else if(nel.getEntity(t).getType().equals("ORG")){
+                    curSent.append(formatAttr("_color", "#0080ff"));
+                }
+                // orange
+                else if(nel.getEntity(t).getType().equals("OTH")){
+                    curSent.append(formatAttr("_color", "#ff8000"));
+                }
+                else{ //same color as 'other' category
+                    curSent.append(formatAttr("_color", "#ff8000"));
+                }               
+            }
+        }
 
 	/**
 	 * Return the text value for <i>token</i>. (Works only if invoked 
