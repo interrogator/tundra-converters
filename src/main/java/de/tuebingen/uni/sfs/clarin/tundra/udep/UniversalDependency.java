@@ -65,11 +65,12 @@ public class UniversalDependency {
         return resultLineArray;
     }
 
-    public static Element buildDepTree(List<List<String[]>> inputSentenceList, String startRelation, Document docSentenceOutput, Element rootConst) {
-        //List<String[]> rootTokens = getRelationsByTarget(inputSentenceList, startRelation); // Finding root relations
-
-
+    public static List<Element> getTokenList(List<List<String[]>> inputSentenceList, Document docOutput) throws ParserConfigurationException {
         List<Element> elList = new ArrayList<Element>();
+        /*DocumentBuilderFactory isOutputFactory = DocumentBuilderFactory.newInstance();
+        DocumentBuilder isOutputBuilder = isOutputFactory.newDocumentBuilder();
+        Document isOutput = isOutputBuilder.newDocument();*/
+
         for (int sl = 0; sl < inputSentenceList.size(); sl++) {
             List<String[]> sentenceTokens = inputSentenceList.get(sl);
             for (int rt = 0; rt < sentenceTokens.size(); rt++) {
@@ -118,7 +119,7 @@ public class UniversalDependency {
                     elementSpaceAfter = sentenceTokenArray[9].trim();
                 }
 
-                Element tokenElement = docSentenceOutput.createElement("token");
+                Element tokenElement = docOutput.createElement("token");
 
                 tokenElement.setAttribute("order", elementOrder);
                 tokenElement.setAttribute("text", elementToken);
@@ -126,6 +127,7 @@ public class UniversalDependency {
                 tokenElement.setAttribute("pos", elementPos1);
                 tokenElement.setAttribute("pos2", elementPos2);
                 tokenElement.setAttribute("categories", elementCategories); // need to be separated
+                tokenElement.setAttribute("head", elementDepTarget);
                 tokenElement.setAttribute("edge", elementEdge);
                 tokenElement.setAttribute("deps", elementDeps);
                 tokenElement.setAttribute("spaceafter", elementSpaceAfter);
@@ -134,26 +136,109 @@ public class UniversalDependency {
                     tokenElement.setAttribute("_punct", "true");
                 }
 
-
-                System.out.println(tokenElement.getAttribute("text"));
-
-
                 elList.add(tokenElement);
-
-                if (elementDepTarget != "0") {
-                //    tokenElement = buildDepTree(inputSentenceList, elementDepTarget, docSentenceOutput, tokenElement);
-                }
-                //rootConst.appendChild(tokenElement);
-                //}
-
             }
         }
-        System.out.println(elList);
-        
-        //System.out.println(allTokens.get(1).getAttribute("text"));
-        return rootConst;
+        return elList;
     }
 
+    public static List<Integer> getChildIndex(List<Element> tokenList, String headValue) {
+        List<Integer> indexList = new ArrayList<Integer>();
+        for (int tl = 0; tl < tokenList.size(); tl++) {
+            Element curElement = tokenList.get(tl);
+            if (curElement.getAttribute("head").equals(headValue)) {
+                if (tokenHasChildren(tokenList, curElement.getAttribute("order")) == false) {
+                    indexList.add(tl);
+                }
+            }
+        }
+        return indexList;
+    }
+
+    public static boolean tokenHasChildren(List<Element> tokenList, String headValue) {
+        boolean hasChildTokens = false;
+        for (int tl = 0; tl < tokenList.size(); tl++) {
+            Element curElement = tokenList.get(tl);
+            if (curElement.getAttribute("head").equals(headValue)) {
+                hasChildTokens = true;
+                break;
+            }
+        }
+        return hasChildTokens;
+    }
+
+    public static boolean hasOnlyRootTokens(List<Element> tokenList) {
+        boolean onlyRootTokens = false;
+        for (int tl = 0; tl < tokenList.size(); tl++) {
+            Element curElement = tokenList.get(tl);
+            if (curElement.getAttribute("head").equals("0")) {
+                onlyRootTokens = true;
+            }
+            else {
+                onlyRootTokens = false;
+            }
+        }
+        return onlyRootTokens;
+    }
+
+    public static List<Element> removeEmptyTokens(List<Element> tokenList) {
+        boolean repeatAgain = false;
+        for (int tl = 0; tl < tokenList.size(); tl++) {
+            Element curElement = tokenList.get(tl);
+            if (curElement.getAttribute("head").equals("-1")) {
+                tokenList.remove(tl);
+                repeatAgain = true;
+                break;
+            }
+        }
+        if (repeatAgain == true) {
+            tokenList = removeEmptyTokens(tokenList);
+        }
+        return tokenList;
+    }
+
+    public static List<Element> buildDepTree(List<Element> allTokens) throws ParserConfigurationException {
+        //List<Element> resultList = new ArrayList<Element>();
+
+        /*DocumentBuilderFactory isOutputFactory = DocumentBuilderFactory.newInstance();
+        DocumentBuilder isOutputBuilder = isOutputFactory.newDocumentBuilder();
+        Document isOutput = isOutputBuilder.newDocument();*/
+
+        //if (hasOnlyRootTokens(allTokens) == false)
+        while (hasOnlyRootTokens(allTokens) == false) {
+            for (int at = 0; at < allTokens.size(); at++) {
+                Element curToken = allTokens.get(at);
+
+                List<Integer> childIndex = getChildIndex(allTokens, curToken.getAttribute("order"));
+                if (childIndex.size() > 0) {
+                    Element updatedToken = allTokens.get(at);
+                    for (int ci = 0; ci < childIndex.size(); ci++) {
+                        Element childToken = allTokens.get(childIndex.get(ci));
+                        updatedToken.appendChild(childToken);
+                        //childToken.setAttribute("head", "-1");
+
+
+                    }
+                    allTokens.set(at, updatedToken);
+
+                    List<Element> resultList = new ArrayList<Element>();
+                    for (int rl = 0; rl < allTokens.size(); rl++) {
+                        if (childIndex.contains(rl) == false) {
+                            resultList.add(allTokens.get(rl));
+                        }
+                    }
+                    allTokens.clear();
+                    allTokens = resultList;
+                    //allTokens = removeEmptyTokens(allTokens);
+                    //allTokens = buildDepTree(allTokens);
+                    //System.out.println(allTokens.size());
+                    System.out.println(at + ") - " + childIndex.size());
+                    break;
+                }
+            }
+        }
+        return allTokens;
+    }
     /**
      * Main method of the class
      * @param args command line arguments. It takes exactly two parameters: source folder with the treebank files, and the name of the final treebank
@@ -226,9 +311,12 @@ public class UniversalDependency {
                             Element consElement = docOutput.createElement("cons"); // Adding the main constituent node
 
                             //System.out.print(sentenceList.size());
-                            Element newConsElement = buildDepTree(sentenceList, "0", docOutput, consElement);
-
-                            sentElement.appendChild(newConsElement);
+                            //Element newConsElement = buildDepTree(sentenceList, "0", docOutput, consElement);
+                            List<Element> depTreeList = buildDepTree(getTokenList(sentenceList, docOutput));
+                            for (int dt = 0; dt < depTreeList.size(); dt++) {
+                                consElement.appendChild(depTreeList.get(dt));
+                            }
+                            sentElement.appendChild(consElement);
                             //System.out.println("------");
 
                             rootElement.appendChild(sentElement);
