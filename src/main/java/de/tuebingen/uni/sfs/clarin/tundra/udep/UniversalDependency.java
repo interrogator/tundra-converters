@@ -2,6 +2,8 @@ package de.tuebingen.uni.sfs.clarin.tundra.udep;
 
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -25,6 +27,7 @@ import java.util.List;
  * http://universaldependencies.org/
  */
 public class UniversalDependency {
+    public static Integer startNum = 0;
     /**
      * Provides a list of files in a certain folder
      * @param sourceFolder the name of the folder to browse
@@ -232,12 +235,37 @@ public class UniversalDependency {
                     //allTokens = removeEmptyTokens(allTokens);
                     //allTokens = buildDepTree(allTokens);
                     //System.out.println(allTokens.size());
-                    System.out.println(at + ") - " + childIndex.size());
+                    //System.out.println(at + ") - " + childIndex.size());
                     break;
                 }
             }
         }
         return allTokens;
+    }
+
+    public static Element addNumAttributes(Element inputNode) {
+        inputNode.removeAttribute("head");
+        startNum++;
+        inputNode.setAttribute("num", String.valueOf(startNum));
+        if (inputNode.hasAttribute("text")) {
+            System.out.println(inputNode.getAttribute("text"));
+        }
+
+        if (inputNode.hasChildNodes()) {
+            NodeList treeElList = inputNode.getChildNodes();
+            for (int te = 0; te < treeElList.getLength(); te++) {
+                Node treeNode = treeElList.item(te);
+                if (treeNode.getNodeType() == Node.ELEMENT_NODE) {
+                    Element eElement = (Element) treeNode;
+                    //startNum++;
+                    //if (eElement.hasChildNodes()) {
+                        addNumAttributes(eElement);
+                    //}
+                    //startNum++;
+                }
+            }
+        }
+        return inputNode;
     }
     /**
      * Main method of the class
@@ -309,39 +337,29 @@ public class UniversalDependency {
                             Element sentElement = docOutput.createElement("sent"); // Adding a sentence node
                             sentElement.setAttribute("id", "st" + sentenceCounter);
                             Element consElement = docOutput.createElement("cons"); // Adding the main constituent node
+                            // Setting attributes for the main constituent
+                            consElement.setAttribute("start", "1");
+                            consElement.setAttribute("_root", "true");
+                            consElement.setAttribute("num", "1");
+                            consElement.setAttribute("cat", "ROOT");
 
-                            //System.out.print(sentenceList.size());
-                            //Element newConsElement = buildDepTree(sentenceList, "0", docOutput, consElement);
                             List<Element> depTreeList = buildDepTree(getTokenList(sentenceList, docOutput));
                             for (int dt = 0; dt < depTreeList.size(); dt++) {
                                 consElement.appendChild(depTreeList.get(dt));
                             }
+                            //consElement = addNumAttributes(consElement, 0);
+                            //startNum = 0;
+                            addNumAttributes(consElement);
                             sentElement.appendChild(consElement);
-                            //System.out.println("------");
-
                             rootElement.appendChild(sentElement);
-                            // saving our results into XML
-                            TransformerFactory transformerFactory = TransformerFactory.newInstance();
-                            Transformer transformer = transformerFactory.newTransformer();
-                            transformer.setOutputProperty(OutputKeys.INDENT,"yes"); // setting line breaks
-                            transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "2");
-                            DOMSource source = new DOMSource(docOutput);
-                            StreamResult result = new StreamResult(new File(outputFile));
-                            transformer.transform(source, result);
-                            System.out.println("Writing data into the file: " + outputFile);
-
-
 
                             sentenceList.clear();
                         }
-
-                        //line = br.readLine();
 
                         if (sentenceCounter>2) {
                             break;
                         }
                     }
-                    //String everything = sb.toString();
                 }
 
                 if (sentenceCounter>2) {
@@ -349,6 +367,16 @@ public class UniversalDependency {
                 }
 
             }
+
+            // saving our results into XML
+            TransformerFactory transformerFactory = TransformerFactory.newInstance();
+            Transformer transformer = transformerFactory.newTransformer();
+            transformer.setOutputProperty(OutputKeys.INDENT,"yes"); // setting line breaks
+            transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "2");
+            DOMSource source = new DOMSource(docOutput);
+            StreamResult result = new StreamResult(new File(outputFile));
+            transformer.transform(source, result);
+            System.out.println("Writing data into the file: " + outputFile);
 
         }
     }
