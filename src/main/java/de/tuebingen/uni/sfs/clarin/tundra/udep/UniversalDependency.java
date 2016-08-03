@@ -28,6 +28,8 @@ import java.util.List;
  */
 public class UniversalDependency {
     public static Integer startNum = 0;
+    public static Integer minOrder = 0;
+    public static Integer maxOrder = 0;
     /**
      * Provides a list of files in a certain folder
      * @param sourceFolder the name of the folder to browse
@@ -68,7 +70,7 @@ public class UniversalDependency {
         return resultLineArray;
     }
 
-    public static List<Element> getTokenList(List<List<String[]>> inputSentenceList, Document docOutput) throws ParserConfigurationException {
+    public static List<Element> getTokenList(List<List<String[]>> inputSentenceList, Document docOutput, Integer tokenCount) throws ParserConfigurationException {
         List<Element> elList = new ArrayList<Element>();
         /*DocumentBuilderFactory isOutputFactory = DocumentBuilderFactory.newInstance();
         DocumentBuilder isOutputBuilder = isOutputFactory.newDocumentBuilder();
@@ -91,8 +93,13 @@ public class UniversalDependency {
                 String elementDeps = "";
                 String elementSpaceAfter = "";
 
+                String elementNumber = "";
+
                 if (sentenceTokenArray.length > 0) {
                     elementOrder = sentenceTokenArray[0].trim();
+                    elementNumber = elementOrder;
+                    elementOrder = String.valueOf(Integer.valueOf(elementOrder) + tokenCount);
+                    //System.out.println(elementOrder);
                 }
                 if (sentenceTokenArray.length > 1) {
                     elementToken = sentenceTokenArray[1].trim();
@@ -134,6 +141,7 @@ public class UniversalDependency {
                 tokenElement.setAttribute("edge", elementEdge);
                 tokenElement.setAttribute("deps", elementDeps);
                 tokenElement.setAttribute("spaceafter", elementSpaceAfter);
+                tokenElement.setAttribute("number", elementNumber);
 
                 if (elementPos1.toLowerCase().equals("punct")) {
                     tokenElement.setAttribute("_punct", "true");
@@ -150,7 +158,7 @@ public class UniversalDependency {
         for (int tl = 0; tl < tokenList.size(); tl++) {
             Element curElement = tokenList.get(tl);
             if (curElement.getAttribute("head").equals(headValue)) {
-                if (tokenHasChildren(tokenList, curElement.getAttribute("order")) == false) {
+                if (tokenHasChildren(tokenList, curElement.getAttribute("number")) == false) {
                     indexList.add(tl);
                 }
             }
@@ -184,21 +192,7 @@ public class UniversalDependency {
         return onlyRootTokens;
     }
 
-    public static List<Element> removeEmptyTokens(List<Element> tokenList) {
-        boolean repeatAgain = false;
-        for (int tl = 0; tl < tokenList.size(); tl++) {
-            Element curElement = tokenList.get(tl);
-            if (curElement.getAttribute("head").equals("-1")) {
-                tokenList.remove(tl);
-                repeatAgain = true;
-                break;
-            }
-        }
-        if (repeatAgain == true) {
-            tokenList = removeEmptyTokens(tokenList);
-        }
-        return tokenList;
-    }
+
 
     public static List<Element> buildDepTree(List<Element> allTokens) throws ParserConfigurationException {
         //List<Element> resultList = new ArrayList<Element>();
@@ -212,7 +206,7 @@ public class UniversalDependency {
             for (int at = 0; at < allTokens.size(); at++) {
                 Element curToken = allTokens.get(at);
 
-                List<Integer> childIndex = getChildIndex(allTokens, curToken.getAttribute("order"));
+                List<Integer> childIndex = getChildIndex(allTokens, curToken.getAttribute("number"));
                 if (childIndex.size() > 0) {
                     Element updatedToken = allTokens.get(at);
                     for (int ci = 0; ci < childIndex.size(); ci++) {
@@ -232,10 +226,7 @@ public class UniversalDependency {
                     }
                     allTokens.clear();
                     allTokens = resultList;
-                    //allTokens = removeEmptyTokens(allTokens);
-                    //allTokens = buildDepTree(allTokens);
-                    //System.out.println(allTokens.size());
-                    //System.out.println(at + ") - " + childIndex.size());
+
                     break;
                 }
             }
@@ -243,12 +234,48 @@ public class UniversalDependency {
         return allTokens;
     }
 
-    public static Element addNumAttributes(Element inputNode) {
+    public static void addTundraSpecificAttributes(Element inputNode) {
         inputNode.removeAttribute("head");
+        inputNode.removeAttribute("number");
+
         startNum++;
         inputNode.setAttribute("num", String.valueOf(startNum));
-        if (inputNode.hasAttribute("text")) {
-            System.out.println(inputNode.getAttribute("text"));
+        minOrder = 0;
+        maxOrder = 0;
+        getStartFinishAttributes(inputNode);
+        inputNode.setAttribute("start", String.valueOf(minOrder));
+        inputNode.setAttribute("finish", String.valueOf(maxOrder));
+
+        if (inputNode.hasChildNodes()) {
+            NodeList treeElList = inputNode.getChildNodes();
+            for (int te = 0; te < treeElList.getLength(); te++) {
+                Node treeNode = treeElList.item(te);
+                if (treeNode.getNodeType() == Node.ELEMENT_NODE) {
+                    Element eElement = (Element) treeNode;
+                    addTundraSpecificAttributes(eElement);
+                }
+            }
+        }
+    }
+
+
+    public static void getStartFinishAttributes(Element inputNode) {
+        String orderString = inputNode.getAttribute("order");
+        if (orderString.length() > 0) {
+            Integer curOrder = Integer.valueOf(orderString);
+            if (minOrder == 0) {
+                minOrder = curOrder;
+            }
+            if (curOrder < minOrder) {
+                minOrder = curOrder;
+            }
+
+            if (maxOrder == 0) {
+                maxOrder = curOrder;
+            }
+            if (curOrder > maxOrder) {
+                maxOrder = curOrder;
+            }
         }
 
         if (inputNode.hasChildNodes()) {
@@ -257,16 +284,15 @@ public class UniversalDependency {
                 Node treeNode = treeElList.item(te);
                 if (treeNode.getNodeType() == Node.ELEMENT_NODE) {
                     Element eElement = (Element) treeNode;
-                    //startNum++;
-                    //if (eElement.hasChildNodes()) {
-                        addNumAttributes(eElement);
-                    //}
-                    //startNum++;
+                    getStartFinishAttributes(eElement);
                 }
             }
         }
-        return inputNode;
     }
+
+
+
+
     /**
      * Main method of the class
      * @param args command line arguments. It takes exactly two parameters: source folder with the treebank files, and the name of the final treebank
@@ -296,75 +322,68 @@ public class UniversalDependency {
             docOutput.appendChild(rootElement);
 
             Integer sentenceCounter = 0;
-            Integer prevCounterVal = 0;
-            Integer tokenCounter = 0;
+            Integer tokenTotal = 0;
 
             // Reading files from a given folder (we are going to merge them together in one treebank file)
             List<String> conlluFiles = getUDFileList(inputFolder);
             for (int ci = 0; ci < conlluFiles.size(); ci++) {
                 System.out.println("Reading the source file: " + conlluFiles.get(ci));
 
-                //BufferedReader br = new BufferedReader(new FileReader(inputFolder+"/"+conlluFiles.get(ci)));
                 List<List<String[]>> sentenceList = new ArrayList<List<String[]>>();
-                // root elements
-
-                //try {
-                //    String line = br.readLine();
-                //    while (line != null) {
                 try (BufferedReader br = new BufferedReader(new FileReader(inputFolder+"/"+conlluFiles.get(ci)))) {
                     String line;
                     while ((line = br.readLine()) != null) {
-                        // process the line.
-
+                        // processing each line
                         line = line.trim();
                         List<String[]> lineList = new ArrayList<String[]>();
                         if ((line.length() > 0) && (line.startsWith("#") == false)) { // not a comment or empty line
                             String[] lineArray = line.split("\t"); // split by TAB characters
                             lineArray[0] = lineArray[0].trim();
-                            if (lineArray[0].equals("1")) {
+                            if (lineArray[0].equals("1")) { // first token of a sentence
                                 sentenceCounter++;
-                                //System.out.println(sentenceCounter + ") ");
-
                             }
                             lineList.add(lineArray);
                             sentenceList.add(lineList);
 
                         }
 
-                        //System.out.println(line);
                         if ((line.length() == 0)) { // Empty line or end of file means a sentence boundary
-
                             Element sentElement = docOutput.createElement("sent"); // Adding a sentence node
                             sentElement.setAttribute("id", "st" + sentenceCounter);
                             Element consElement = docOutput.createElement("cons"); // Adding the main constituent node
                             // Setting attributes for the main constituent
-                            consElement.setAttribute("start", "1");
+                            //consElement.setAttribute("start", "1");
                             consElement.setAttribute("_root", "true");
-                            consElement.setAttribute("num", "1");
+                            //consElement.setAttribute("num", "1");
                             consElement.setAttribute("cat", "ROOT");
+                            List<Element> allTokenList = getTokenList(sentenceList, docOutput, tokenTotal);
+                            //tokenCounter += allTokenList.size();
+                            Integer tokensFound = allTokenList.size();
+                            //tokenTotal = tokenTotal + tokensFound;
+                            tokenTotal = tokenTotal + tokensFound;
+                            System.out.println(tokenTotal);
+                            //System.out.println(tokenCounter);
+                            List<Element> depTreeList = buildDepTree(allTokenList);
 
-                            List<Element> depTreeList = buildDepTree(getTokenList(sentenceList, docOutput));
                             for (int dt = 0; dt < depTreeList.size(); dt++) {
                                 consElement.appendChild(depTreeList.get(dt));
                             }
-                            //consElement = addNumAttributes(consElement, 0);
-                            //startNum = 0;
-                            addNumAttributes(consElement);
+                            addTundraSpecificAttributes(consElement);
                             sentElement.appendChild(consElement);
                             rootElement.appendChild(sentElement);
-
                             sentenceList.clear();
+
                         }
 
-                        if (sentenceCounter>2) {
+                        /*if (sentenceCounter>2) {
                             break;
-                        }
+                        }*/
                     }
                 }
 
-                if (sentenceCounter>2) {
+                /*if (sentenceCounter>2) {
                     break;
-                }
+                }*/
 
             }
 
