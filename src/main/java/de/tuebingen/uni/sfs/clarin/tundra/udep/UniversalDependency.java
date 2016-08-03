@@ -50,40 +50,23 @@ public class UniversalDependency {
         return folderList;
     }
 
-    public static List<String[]> getRelationsByTarget(List<List<String[]>> inputSentenceList, String targetRelation) {
-        List<String[]> resultLineArray = new ArrayList<String[]>();
-        //for (int i = 0; i < inputSentenceList.size(); i++) {
-            for (int k = 0; k < inputSentenceList.size(); k++) {
-                List<String[]> inputLineList = inputSentenceList.get(k);
-                for (int m = 0; m < inputLineList.size(); m++) {
-                    String[] inputLine = inputLineList.get(m);
-                    //System.out.println(inputLine[6]);
-                    //System.out.println(inputLine[6].length());
-                    inputLine[6] = inputLine[6].trim();
-                    if (inputLine[6].equals(targetRelation)) {
-
-                        resultLineArray.add(inputLine);
-                    }
-                }
-            }
-        //}
-        return resultLineArray;
-    }
-
+    /**
+     * Returns a list of all tokens in a given sentence
+     * @param inputSentenceList tokens as strings
+     * @param docOutput document object to create tokens of the Element type
+     * @param tokenCount number of tokens in the previous sentence (needed for setting attribute values)
+     * @return a list of all tokens in a given sentence
+     */
     public static List<Element> getTokenList(List<List<String[]>> inputSentenceList, Document docOutput, Integer tokenCount) throws ParserConfigurationException {
         List<Element> elList = new ArrayList<Element>();
-        /*DocumentBuilderFactory isOutputFactory = DocumentBuilderFactory.newInstance();
-        DocumentBuilder isOutputBuilder = isOutputFactory.newDocumentBuilder();
-        Document isOutput = isOutputBuilder.newDocument();*/
-
         for (int sl = 0; sl < inputSentenceList.size(); sl++) {
             List<String[]> sentenceTokens = inputSentenceList.get(sl);
             for (int rt = 0; rt < sentenceTokens.size(); rt++) {
                 String[] sentenceTokenArray = sentenceTokens.get(rt);
 
-
                 String elementOrder = "";
                 String elementToken = "";
+                String elementText = "";
                 String elementLemma = "";
                 String elementPos1 = "";
                 String elementPos2 = "";
@@ -99,10 +82,13 @@ public class UniversalDependency {
                     elementOrder = sentenceTokenArray[0].trim();
                     elementNumber = elementOrder;
                     elementOrder = String.valueOf(Integer.valueOf(elementOrder) + tokenCount);
-                    //System.out.println(elementOrder);
                 }
                 if (sentenceTokenArray.length > 1) {
                     elementToken = sentenceTokenArray[1].trim();
+                    elementText = elementToken;
+                    if (sl>0) {
+                        elementText = " " + elementText;
+                    }
                 }
                 if (sentenceTokenArray.length > 2) {
                     elementLemma = sentenceTokenArray[2].trim();
@@ -132,11 +118,25 @@ public class UniversalDependency {
                 Element tokenElement = docOutput.createElement("token");
 
                 tokenElement.setAttribute("order", elementOrder);
-                tokenElement.setAttribute("text", elementToken);
+                tokenElement.setAttribute("text", elementText);
+                tokenElement.setAttribute("token", elementToken);
                 tokenElement.setAttribute("lemma", elementLemma);
                 tokenElement.setAttribute("pos", elementPos1);
-                tokenElement.setAttribute("pos2", elementPos2);
-                tokenElement.setAttribute("categories", elementCategories); // need to be separated
+                tokenElement.setAttribute("xpos", elementPos2);
+
+                // Splitting categories
+                String[] categoriesList = elementCategories.split("\\|");
+                for (int cl = 0; cl < categoriesList.length; cl++) {
+                    String curCategory = categoriesList[cl];
+                    //System.out.println(curCategory);
+                    String[] singleCategory = curCategory.split("=");
+                    if (singleCategory.length == 2) {
+                        tokenElement.setAttribute(singleCategory[0].toLowerCase(), singleCategory[1]);
+                    }
+                }
+                //tokenElement.setAttribute("categories", elementCategories);
+
+
                 tokenElement.setAttribute("head", elementDepTarget);
                 tokenElement.setAttribute("edge", elementEdge);
                 tokenElement.setAttribute("deps", elementDeps);
@@ -153,6 +153,12 @@ public class UniversalDependency {
         return elList;
     }
 
+    /**
+     * Finds children based on the head attribute value
+     * @param tokenList all tokens
+     * @param headValue head attribute value of a certain node
+     * @return a list of token indices
+     */
     public static List<Integer> getChildIndex(List<Element> tokenList, String headValue) {
         List<Integer> indexList = new ArrayList<Integer>();
         for (int tl = 0; tl < tokenList.size(); tl++) {
@@ -166,6 +172,12 @@ public class UniversalDependency {
         return indexList;
     }
 
+    /**
+     * Checks if a node has children or not
+     * @param tokenList all tokens
+     * @param headValue head attribute value of a certain node
+     * @return true of false
+     */
     public static boolean tokenHasChildren(List<Element> tokenList, String headValue) {
         boolean hasChildTokens = false;
         for (int tl = 0; tl < tokenList.size(); tl++) {
@@ -178,6 +190,11 @@ public class UniversalDependency {
         return hasChildTokens;
     }
 
+    /**
+     * Checks if a list contains only the tokens attached to the root node directly
+     * @param tokenList all tokens
+     * @return true or false
+     */
     public static boolean hasOnlyRootTokens(List<Element> tokenList) {
         boolean onlyRootTokens = false;
         for (int tl = 0; tl < tokenList.size(); tl++) {
@@ -193,15 +210,12 @@ public class UniversalDependency {
     }
 
 
-
+    /**
+     * Creates a hierarchical structure of tokens based on the flat one
+     * @param allTokens all tokens
+     * @return a nested list of tokens
+     */
     public static List<Element> buildDepTree(List<Element> allTokens) throws ParserConfigurationException {
-        //List<Element> resultList = new ArrayList<Element>();
-
-        /*DocumentBuilderFactory isOutputFactory = DocumentBuilderFactory.newInstance();
-        DocumentBuilder isOutputBuilder = isOutputFactory.newDocumentBuilder();
-        Document isOutput = isOutputBuilder.newDocument();*/
-
-        //if (hasOnlyRootTokens(allTokens) == false)
         while (hasOnlyRootTokens(allTokens) == false) {
             for (int at = 0; at < allTokens.size(); at++) {
                 Element curToken = allTokens.get(at);
@@ -212,9 +226,6 @@ public class UniversalDependency {
                     for (int ci = 0; ci < childIndex.size(); ci++) {
                         Element childToken = allTokens.get(childIndex.get(ci));
                         updatedToken.appendChild(childToken);
-                        //childToken.setAttribute("head", "-1");
-
-
                     }
                     allTokens.set(at, updatedToken);
 
@@ -226,7 +237,6 @@ public class UniversalDependency {
                     }
                     allTokens.clear();
                     allTokens = resultList;
-
                     break;
                 }
             }
@@ -234,6 +244,10 @@ public class UniversalDependency {
         return allTokens;
     }
 
+    /**
+     * Adds "num", "start", and "finish" attributes needed for TüNDRA. It also removes unnecessary ones
+     * @param inputNode a node
+     */
     public static void addTundraSpecificAttributes(Element inputNode) {
         inputNode.removeAttribute("head");
         inputNode.removeAttribute("number");
@@ -258,7 +272,10 @@ public class UniversalDependency {
         }
     }
 
-
+    /**
+     * Finds the values of "start" and "finish" attributes needed for TüNDRA
+     * @param inputNode a node
+     */
     public static void getStartFinishAttributes(Element inputNode) {
         String orderString = inputNode.getAttribute("order");
         if (orderString.length() > 0) {
@@ -361,8 +378,6 @@ public class UniversalDependency {
                             Integer tokensFound = allTokenList.size();
                             //tokenTotal = tokenTotal + tokensFound;
                             tokenTotal = tokenTotal + tokensFound;
-                            System.out.println(tokenTotal);
-                            //System.out.println(tokenCounter);
                             List<Element> depTreeList = buildDepTree(allTokenList);
 
                             for (int dt = 0; dt < depTreeList.size(); dt++) {
@@ -396,7 +411,6 @@ public class UniversalDependency {
             StreamResult result = new StreamResult(new File(outputFile));
             transformer.transform(source, result);
             System.out.println("Writing data into the file: " + outputFile);
-
         }
     }
 }
