@@ -14,10 +14,7 @@ import javax.xml.transform.TransformerException;
 import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -50,6 +47,45 @@ public class UniversalDependency {
         return folderList;
     }
 
+
+    /**
+     * Provides a list of folders in a certain folder
+     * @param sourceFolder the name of the folder to browse
+     * @return list of folders in the given folder
+     */
+    public static List<String> getUDFolderList(String sourceFolder) {
+        File folder = new File(sourceFolder);
+        File[] listOfFiles = folder.listFiles();
+        List<String> folderList = new ArrayList<String>();;
+        for (int i = 0; i < listOfFiles.length; i++) {
+            if (listOfFiles[i].isDirectory()) {
+                String curFolderName = listOfFiles[i].getName();
+                folderList.add(curFolderName);
+            }
+        }
+        return folderList;
+    }
+
+    public static List<String> fastSplit(String inputString, String delimiter) {
+        List<String> outputArray = new ArrayList<>();
+
+        int start = 0;
+        while (true) {
+            int found = inputString.indexOf(delimiter, start);
+            if (found != -1) {
+                outputArray.add(inputString.substring(start, found));
+                //System.out.println(inputString.substring(start, found));
+            }
+            else {
+                break;
+            }
+            start = found + 1;  // move start up for next iteration
+        }
+
+
+        return outputArray;
+    }
+
     /**
      * Returns a list of all tokens in a given sentence
      * @param inputSentenceList tokens as strings
@@ -57,12 +93,15 @@ public class UniversalDependency {
      * @param tokenCount number of tokens in the previous sentence (needed for setting attribute values)
      * @return a list of all tokens in a given sentence
      */
-    public static List<Element> getTokenList(List<List<String[]>> inputSentenceList, Document docOutput, Integer tokenCount) throws ParserConfigurationException {
+    //public static List<Element> getTokenList(List<List<String[]>> inputSentenceList, Document docOutput, Integer tokenCount) throws ParserConfigurationException {
+    public static List<Element> getTokenList(List<List<List<String>>> inputSentenceList, Document docOutput, Integer tokenCount) throws ParserConfigurationException {
         List<Element> elList = new ArrayList<Element>();
         for (int sl = 0; sl < inputSentenceList.size(); sl++) {
-            List<String[]> sentenceTokens = inputSentenceList.get(sl);
+            //List<String[]> sentenceTokens = inputSentenceList.get(sl);
+            List<List<String>> sentenceTokens = inputSentenceList.get(sl);
             for (int rt = 0; rt < sentenceTokens.size(); rt++) {
-                String[] sentenceTokenArray = sentenceTokens.get(rt);
+                //String[] sentenceTokenArray = sentenceTokens.get(rt);
+                List<String> sentenceTokenArray = sentenceTokens.get(rt);
 
                 String elementOrder = "";
                 String elementToken = "";
@@ -78,41 +117,46 @@ public class UniversalDependency {
 
                 String elementNumber = "";
 
-                if (sentenceTokenArray.length > 0) {
-                    elementOrder = sentenceTokenArray[0].trim();
+                //if (sentenceTokenArray.length > 0) {
+                if (sentenceTokenArray.size() > 0) {
+                    //elementOrder = sentenceTokenArray[0].trim();
+                    elementOrder = sentenceTokenArray.get(0).trim();
+                    if (elementOrder.contains("-")) {
+                        continue;
+                    }
                     elementNumber = elementOrder;
                     elementOrder = String.valueOf(Integer.valueOf(elementOrder) + tokenCount);
                 }
-                if (sentenceTokenArray.length > 1) {
-                    elementToken = sentenceTokenArray[1].trim();
+                if (sentenceTokenArray.size() > 1) {
+                    elementToken = sentenceTokenArray.get(1).trim();
                     elementText = elementToken;
                     if (sl>0) {
                         elementText = " " + elementText;
                     }
                 }
-                if (sentenceTokenArray.length > 2) {
-                    elementLemma = sentenceTokenArray[2].trim();
+                if (sentenceTokenArray.size() > 2) {
+                    elementLemma = sentenceTokenArray.get(2).trim();
                 }
-                if (sentenceTokenArray.length > 3) {
-                    elementPos1 = sentenceTokenArray[3].trim();
+                if (sentenceTokenArray.size() > 3) {
+                    elementPos1 = sentenceTokenArray.get(3).trim();
                 }
-                if (sentenceTokenArray.length > 4) {
-                    elementPos2 = sentenceTokenArray[4].trim();
+                if (sentenceTokenArray.size() > 4) {
+                    elementPos2 = sentenceTokenArray.get(4).trim();
                 }
-                if (sentenceTokenArray.length > 5) {
-                    elementCategories = sentenceTokenArray[5].trim();
+                if (sentenceTokenArray.size() > 5) {
+                    elementCategories = sentenceTokenArray.get(5).trim();
                 }
-                if (sentenceTokenArray.length > 6) {
-                    elementDepTarget = sentenceTokenArray[6].trim();
+                if (sentenceTokenArray.size() > 6) {
+                    elementDepTarget = sentenceTokenArray.get(6).trim();
                 }
-                if (sentenceTokenArray.length > 7) {
-                    elementEdge = sentenceTokenArray[7].trim();
+                if (sentenceTokenArray.size() > 7) {
+                    elementEdge = sentenceTokenArray.get(7).trim();
                 }
-                if (sentenceTokenArray.length > 8) {
-                    elementDeps = sentenceTokenArray[8].trim();
+                if (sentenceTokenArray.size() > 8) {
+                    elementDeps = sentenceTokenArray.get(8).trim();
                 }
-                if (sentenceTokenArray.length > 9) {
-                    elementSpaceAfter = sentenceTokenArray[9].trim();
+                if (sentenceTokenArray.size() > 9) {
+                    elementSpaceAfter = sentenceTokenArray.get(9).trim();
                 }
 
                 Element tokenElement = docOutput.createElement("token");
@@ -120,18 +164,56 @@ public class UniversalDependency {
                 tokenElement.setAttribute("order", elementOrder);
                 tokenElement.setAttribute("text", elementText);
                 tokenElement.setAttribute("token", elementToken);
+                //System.out.println(elementToken);
                 tokenElement.setAttribute("lemma", elementLemma);
                 tokenElement.setAttribute("pos", elementPos1);
                 tokenElement.setAttribute("xpos", elementPos2);
 
                 // Splitting categories
-                String[] categoriesList = elementCategories.split("\\|");
-                for (int cl = 0; cl < categoriesList.length; cl++) {
-                    String curCategory = categoriesList[cl];
+                //String[] categoriesList = elementCategories.split("\\|");
+                List<String> categoriesList = fastSplit(elementCategories, "|");
+
+                //String[] categoriesList = elementCategories.split("\\|");
+
+                //for (int cl = 0; cl < categoriesList.length; cl++) {
+                for (int cl = 0; cl < categoriesList.size(); cl++) {
+                    String curCategory = categoriesList.get(cl);
                     //System.out.println(curCategory);
-                    String[] singleCategory = curCategory.split("=");
-                    if (singleCategory.length == 2) {
-                        tokenElement.setAttribute(singleCategory[0].toLowerCase(), singleCategory[1]);
+
+                    int borderPos = curCategory.indexOf("=");
+                    if (borderPos>-1) {
+
+
+
+                        List<String> singleCategory = new ArrayList<>();
+                        singleCategory.add(curCategory.substring(0,borderPos));
+                        singleCategory.add(curCategory.substring(borderPos+1,curCategory.length()));
+
+                        if (singleCategory.size() == 2) {
+                            int frontPos = singleCategory.get(0).indexOf("[");
+                            int backPos = singleCategory.get(0).indexOf("]");
+                            if (frontPos>-1) {
+                                String tmpItem = singleCategory.get(0);
+                                tmpItem = tmpItem.replace("[","_");
+                                singleCategory.set(0,tmpItem);
+                            }
+                            if (backPos>-1) {
+                                String tmpItem = singleCategory.get(0);
+                                tmpItem = tmpItem.replace("]","");
+                                singleCategory.set(0,tmpItem);
+                            }
+
+
+                            //tokenElement.setAttribute(singleCategory[0].toLowerCase(), singleCategory[1]);
+                            tokenElement.setAttribute(singleCategory.get(0), singleCategory.get(1));
+                            //System.out.println(singleCategory.get(0).toLowerCase() + " --- " + singleCategory.get(1));
+                            //tokenElement.setAttribute(singleCategory[0], singleCategory[1]);
+
+                        }
+
+
+
+
                     }
                 }
                 //tokenElement.setAttribute("categories", elementCategories);
@@ -197,14 +279,19 @@ public class UniversalDependency {
      */
     public static boolean hasOnlyRootTokens(List<Element> tokenList) {
         boolean onlyRootTokens = false;
+        int rootNodeCount = 0;
         for (int tl = 0; tl < tokenList.size(); tl++) {
             Element curElement = tokenList.get(tl);
             if (curElement.getAttribute("head").equals("0")) {
-                onlyRootTokens = true;
+                //onlyRootTokens = true;
+                rootNodeCount += 1;
             }
-            else {
+            /*else {
                 onlyRootTokens = false;
-            }
+            }*/
+        }
+        if (tokenList.size() == rootNodeCount) {
+            onlyRootTokens = true;
         }
         return onlyRootTokens;
     }
@@ -216,11 +303,13 @@ public class UniversalDependency {
      * @return a nested list of tokens
      */
     public static List<Element> buildDepTree(List<Element> allTokens) throws ParserConfigurationException {
+
         while (hasOnlyRootTokens(allTokens) == false) {
             for (int at = 0; at < allTokens.size(); at++) {
                 Element curToken = allTokens.get(at);
 
                 List<Integer> childIndex = getChildIndex(allTokens, curToken.getAttribute("number"));
+                //System.out.println(childIndex);
                 if (childIndex.size() > 0) {
                     Element updatedToken = allTokens.get(at);
                     for (int ci = 0; ci < childIndex.size(); ci++) {
@@ -236,7 +325,11 @@ public class UniversalDependency {
                         }
                     }
                     allTokens.clear();
-                    allTokens = resultList;
+                    for (int rl = 0; rl < resultList.size(); rl++) {
+                        allTokens.add(resultList.get(rl));
+                    }
+                    //allTokens = resultList;
+                    resultList.clear();
                     break;
                 }
             }
@@ -249,7 +342,7 @@ public class UniversalDependency {
      * @param inputNode a node
      */
     public static void addTundraSpecificAttributes(Element inputNode) {
-        inputNode.removeAttribute("head");
+        //inputNode.removeAttribute("head");
         inputNode.removeAttribute("number");
 
         startNum++;
@@ -323,94 +416,152 @@ public class UniversalDependency {
             System.err.println("Too many arguments!\n");
             return;
         }
-        if (args.length == 2) {
+
+        if ((args.length == 1) || (args.length == 2)) {
             String inputFolder = args[0];
-            String outputFile = args[1];
-            System.out.println("Opening the folder containing CONLLU files: " + inputFolder);
-            System.out.println("**********************************************************");
+            String outputFile = "";
 
-            // First we need to create a new XML file for the output
-            DocumentBuilderFactory dbOutputFactory = DocumentBuilderFactory.newInstance();
-            DocumentBuilder dOutputBuilder = dbOutputFactory.newDocumentBuilder();
+            List<String> treebankFolders = new ArrayList<>();
 
-            // root elements
-            Document docOutput = dOutputBuilder.newDocument();
-            Element rootElement = docOutput.createElement("treebank");
-            docOutput.appendChild(rootElement);
+            if (args.length == 1) {
+                treebankFolders = getUDFolderList(inputFolder);
+            }
+            else {
+                treebankFolders.add(inputFolder);
+                outputFile = args[1];
+            }
 
-            Integer sentenceCounter = 0;
-            Integer tokenTotal = 0;
+            for (int tf = 0; tf < treebankFolders.size(); tf++) {
+                String folderName = treebankFolders.get(tf);
+                if (args.length == 1) {
+                    outputFile = inputFolder + folderName + ".xml";
+                }
 
-            // Reading files from a given folder (we are going to merge them together in one treebank file)
-            List<String> conlluFiles = getUDFileList(inputFolder);
-            for (int ci = 0; ci < conlluFiles.size(); ci++) {
-                System.out.println("Reading the source file: " + conlluFiles.get(ci));
+                System.out.println("");
+                System.out.println((tf+1) + " out of " + treebankFolders.size());
+                System.out.println("Opening the folder containing CONLLU files: " + folderName);
+                System.out.println("**********************************************************");
 
-                List<List<String[]>> sentenceList = new ArrayList<List<String[]>>();
-                try (BufferedReader br = new BufferedReader(new FileReader(inputFolder+"/"+conlluFiles.get(ci)))) {
-                    String line;
-                    while ((line = br.readLine()) != null) {
-                        // processing each line
-                        line = line.trim();
-                        List<String[]> lineList = new ArrayList<String[]>();
-                        if ((line.length() > 0) && (line.startsWith("#") == false)) { // not a comment or empty line
-                            String[] lineArray = line.split("\t"); // split by TAB characters
-                            lineArray[0] = lineArray[0].trim();
-                            if (lineArray[0].equals("1")) { // first token of a sentence
-                                sentenceCounter++;
+                // First we need to create a new XML file for the output
+                DocumentBuilderFactory dbOutputFactory = DocumentBuilderFactory.newInstance();
+                DocumentBuilder dOutputBuilder = dbOutputFactory.newDocumentBuilder();
+
+                // root elements
+                Document docOutput = dOutputBuilder.newDocument();
+                Element rootElement = docOutput.createElement("treebank");
+                docOutput.appendChild(rootElement);
+
+                Integer sentenceCounter = 0;
+                Integer tokenTotal = 0;
+
+                // Reading files from a given folder (we are going to merge them together in one treebank file)
+                List<String> conlluFiles = new ArrayList<>();
+                if (args.length == 1) {
+                    conlluFiles = getUDFileList(inputFolder + folderName);
+                }
+                else {
+                    conlluFiles = getUDFileList(folderName);
+                }
+                for (int ci = 0; ci < conlluFiles.size(); ci++) {
+                    System.out.println(tokenTotal);
+                    System.out.print("Reading the source file: " + conlluFiles.get(ci));
+
+                    String filePath = "";
+                    if (args.length == 1) {
+                        filePath = inputFolder + folderName;
+                    }
+                    else {
+                        filePath = inputFolder;
+                    }
+
+                    //List<List<String[]>> sentenceList = new ArrayList<List<String[]>>();
+                    List<List<List<String>>> sentenceList = new ArrayList<List<List<String>>>();
+                    try {
+                        /*FileInputStream fs = new FileInputStream(filePath + "/" + conlluFiles.get(ci));
+                        InputStreamReader ir = new InputStreamReader(fs, "UTF-8");
+                        BufferedReader br = new BufferedReader(ir);*/
+                        BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(filePath + "/" + conlluFiles.get(ci)), "UTF-8"), 8192);
+                        String line;
+                        while ((line = br.readLine()) != null) {
+                            // processing each line
+                            line = line.trim();
+                            //List<String[]> lineList = new ArrayList<String[]>();
+                            List<List<String>> lineList = new ArrayList<List<String>>();
+                            if ((line.length() > 0) && (line.startsWith("#") == false)) { // not a comment or empty line
+                                //String[] lineArray = line.split("\t"); // split by TAB characters
+                                List<String> lineArray = fastSplit(line, "\t"); // split by TAB characters
+                                //lineArray[0] = lineArray[0].trim();
+                                lineArray.set(0,lineArray.get(0).trim());
+                                //if (lineArray[0].equals("1")) { // first token of a sentence
+                                if (lineArray.get(0).equals("1")) { // first token of a sentence
+                                    sentenceCounter++;
+                                }
+                                lineList.add(lineArray);
+                                sentenceList.add(lineList);
+
                             }
-                            lineList.add(lineArray);
-                            sentenceList.add(lineList);
 
-                        }
+                            if ((line.length() == 0)) { // Empty line or end of file means a sentence boundary
+                                Element sentElement = docOutput.createElement("sent"); // Adding a sentence node
+                                sentElement.setAttribute("id", "st" + sentenceCounter);
+                                Element consElement = docOutput.createElement("cons"); // Adding the main constituent node
+                                // Setting attributes for the main constituent
+                                //consElement.setAttribute("start", "1");
+                                consElement.setAttribute("_root", "true");
+                                //consElement.setAttribute("num", "1");
+                                consElement.setAttribute("cat", "ROOT");
 
-                        if ((line.length() == 0)) { // Empty line or end of file means a sentence boundary
-                            Element sentElement = docOutput.createElement("sent"); // Adding a sentence node
-                            sentElement.setAttribute("id", "st" + sentenceCounter);
-                            Element consElement = docOutput.createElement("cons"); // Adding the main constituent node
-                            // Setting attributes for the main constituent
-                            //consElement.setAttribute("start", "1");
-                            consElement.setAttribute("_root", "true");
-                            //consElement.setAttribute("num", "1");
-                            consElement.setAttribute("cat", "ROOT");
-                            List<Element> allTokenList = getTokenList(sentenceList, docOutput, tokenTotal);
-                            //tokenCounter += allTokenList.size();
-                            Integer tokensFound = allTokenList.size();
-                            //tokenTotal = tokenTotal + tokensFound;
-                            tokenTotal = tokenTotal + tokensFound;
-                            List<Element> depTreeList = buildDepTree(allTokenList);
+                                List<Element> allTokenList = getTokenList(sentenceList, docOutput, tokenTotal);
+                                //tokenCounter += allTokenList.size();
+                                Integer tokensFound = allTokenList.size();
+                                //System.out.println(tokensFound);
+                                //tokenTotal = tokenTotal + tokensFound;
+                                tokenTotal = tokenTotal + tokensFound;
+                                List<Element> depTreeList = buildDepTree(allTokenList);
 
-                            for (int dt = 0; dt < depTreeList.size(); dt++) {
-                                consElement.appendChild(depTreeList.get(dt));
+                                for (int dt = 0; dt < depTreeList.size(); dt++) {
+                                    consElement.appendChild(depTreeList.get(dt));
+                                }
+                                //NodeList schildern = rootElement.getChildNodes();
+                                //System.out.println(schildern.getLength());
+                                addTundraSpecificAttributes(consElement);
+                                sentElement.appendChild(consElement);
+                                rootElement.appendChild(sentElement);
+                                sentenceList.clear();
+
                             }
-                            addTundraSpecificAttributes(consElement);
-                            sentElement.appendChild(consElement);
-                            rootElement.appendChild(sentElement);
-                            sentenceList.clear();
-
-                        }
 
                         /*if (sentenceCounter>2) {
                             break;
                         }*/
+                        }
+                        //fs.close();
+                        //ir.close();
+                        br.close();
                     }
-                }
+                    catch(Exception e){
+                        System.err.println("Error: Target File Cannot Be Read");
+                    }
 
                 /*if (sentenceCounter>2) {
                     break;
                 }*/
+                    System.out.println(" - done");
 
+                }
+
+                // saving our results into XML
+                TransformerFactory transformerFactory = TransformerFactory.newInstance();
+                Transformer transformer = transformerFactory.newTransformer();
+                transformer.setOutputProperty(OutputKeys.INDENT, "yes"); // setting line breaks
+                transformer.setOutputProperty(OutputKeys.ENCODING, "UTF-8");
+                transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "2");
+                DOMSource source = new DOMSource(docOutput);
+                StreamResult result = new StreamResult(new File(outputFile));
+                transformer.transform(source, result);
+                System.out.println("Writing data into the file: " + outputFile);
+                tokenTotal = 0;
             }
-
-            // saving our results into XML
-            TransformerFactory transformerFactory = TransformerFactory.newInstance();
-            Transformer transformer = transformerFactory.newTransformer();
-            transformer.setOutputProperty(OutputKeys.INDENT,"yes"); // setting line breaks
-            transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "2");
-            DOMSource source = new DOMSource(docOutput);
-            StreamResult result = new StreamResult(new File(outputFile));
-            transformer.transform(source, result);
-            System.out.println("Writing data into the file: " + outputFile);
         }
     }
 }
