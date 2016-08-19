@@ -192,21 +192,12 @@ public class UniversalDependency {
                     multiFinish = "";
                 }
 
-                // Splitting categories
+                // Splitting morphological features
                 List<String> categoriesList = fastSplit(elementCategories, "|");
-
-                //String[] categoriesList = elementCategories.split("\\|");
-
-                //for (int cl = 0; cl < categoriesList.length; cl++) {
                 for (int cl = 0; cl < categoriesList.size(); cl++) {
                     String curCategory = categoriesList.get(cl);
-                    //System.out.println(curCategory);
-
                     int borderPos = curCategory.indexOf("=");
                     if (borderPos>-1) {
-
-
-
                         List<String> singleCategory = new ArrayList<>();
                         singleCategory.add(curCategory.substring(0,borderPos));
                         singleCategory.add(curCategory.substring(borderPos+1,curCategory.length()));
@@ -225,27 +216,46 @@ public class UniversalDependency {
                                 singleCategory.set(0,tmpItem);
                             }
 
-
-                            //tokenElement.setAttribute(singleCategory[0].toLowerCase(), singleCategory[1]);
                             tokenElement.setAttribute(singleCategory.get(0), singleCategory.get(1));
-                            //System.out.println(singleCategory.get(0).toLowerCase() + " --- " + singleCategory.get(1));
-                            //tokenElement.setAttribute(singleCategory[0], singleCategory[1]);
-
                         }
-
-
-
-
                     }
                 }
-                //tokenElement.setAttribute("categories", elementCategories);
 
+                //tokenElement.setAttribute("spaceafter", elementSpaceAfter);
+
+                // Splitting misc attributes
+                List<String> miscList = fastSplit(elementMisc, "|");
+                for (int ml = 0; ml < miscList.size(); ml++) {
+                    String curMisc = miscList.get(ml);
+                    int borderPos = curMisc.indexOf("=");
+                    if (borderPos>-1) {
+                        List<String> singleMisc = new ArrayList<>();
+                        singleMisc.add(curMisc.substring(0,borderPos));
+                        singleMisc.add(curMisc.substring(borderPos+1,curMisc.length()));
+
+                        if (singleMisc.size() == 2) {
+                            int frontPos = singleMisc.get(0).indexOf("[");
+                            int backPos = singleMisc.get(0).indexOf("]");
+                            if (frontPos>-1) {
+                                String tmpItem = singleMisc.get(0);
+                                tmpItem = tmpItem.replace("[","_");
+                                singleMisc.set(0,tmpItem);
+                            }
+                            if (backPos>-1) {
+                                String tmpItem = singleMisc.get(0);
+                                tmpItem = tmpItem.replace("]","");
+                                singleMisc.set(0,tmpItem);
+                            }
+
+                            tokenElement.setAttribute(singleMisc.get(0), singleMisc.get(1));
+                        }
+                    }
+                }
 
                 tokenElement.setAttribute("head", elementDepTarget);
                 tokenElement.setAttribute("edge", elementEdge);
                 tokenElement.setAttribute("deps", elementDeps);
-                tokenElement.setAttribute("spaceafter", elementSpaceAfter);
-                tokenElement.setAttribute("number", elementNumber);
+                tokenElement.setAttribute("elementnumber", elementNumber); // temporary attribute
 
                 if (elementPos1.toLowerCase().equals("punct")) {
                     tokenElement.setAttribute("_punct", "true");
@@ -268,7 +278,7 @@ public class UniversalDependency {
         for (int tl = 0; tl < tokenList.size(); tl++) {
             Element curElement = tokenList.get(tl);
             if (curElement.getAttribute("head").equals(headValue)) {
-                if (tokenHasChildren(tokenList, curElement.getAttribute("number")) == false) {
+                if (tokenHasChildren(tokenList, curElement.getAttribute("elementnumber")) == false) {
                     indexList.add(tl);
                 }
             }
@@ -330,7 +340,7 @@ public class UniversalDependency {
             for (int at = 0; at < allTokens.size(); at++) {
                 Element curToken = allTokens.get(at);
 
-                List<Integer> childIndex = getChildIndex(allTokens, curToken.getAttribute("number"));
+                List<Integer> childIndex = getChildIndex(allTokens, curToken.getAttribute("elementnumber"));
                 //System.out.println(childIndex);
                 if (childIndex.size() > 0) {
                     Element updatedToken = allTokens.get(at);
@@ -365,7 +375,7 @@ public class UniversalDependency {
      */
     public static void addTundraSpecificAttributes(Element inputNode) {
         //inputNode.removeAttribute("head");
-        inputNode.removeAttribute("number");
+        inputNode.removeAttribute("elementnumber");
 
         startNum++;
         inputNode.setAttribute("num", String.valueOf(startNum));
