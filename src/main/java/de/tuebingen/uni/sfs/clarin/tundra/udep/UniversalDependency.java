@@ -70,18 +70,21 @@ public class UniversalDependency {
         List<String> outputArray = new ArrayList<>();
 
         int start = 0;
-        while (true) {
-            int found = inputString.indexOf(delimiter, start);
-            if (found != -1) {
-                outputArray.add(inputString.substring(start, found));
-                //System.out.println(inputString.substring(start, found));
+        //if (inputString.indexOf(delimiter) > -1) {
+            while (true) {
+                int found = inputString.indexOf(delimiter, start);
+                if (found != -1) {
+                    outputArray.add(inputString.substring(start, found));
+                    //System.out.println(inputString.substring(start, found));
+                } else {
+                    if (start <= inputString.length() - 1) {
+                        outputArray.add(inputString.substring(start, inputString.length()));
+                    }
+                    break;
+                }
+                start = found + 1;  // move start up for next iteration
             }
-            else {
-                break;
-            }
-            start = found + 1;  // move start up for next iteration
-        }
-
+        //}
 
         return outputArray;
     }
@@ -96,6 +99,9 @@ public class UniversalDependency {
     //public static List<Element> getTokenList(List<List<String[]>> inputSentenceList, Document docOutput, Integer tokenCount) throws ParserConfigurationException {
     public static List<Element> getTokenList(List<List<List<String>>> inputSentenceList, Document docOutput, Integer tokenCount) throws ParserConfigurationException {
         List<Element> elList = new ArrayList<Element>();
+        String multiWord = "";
+        String multiStart = "";
+        String multiFinish = "";
         for (int sl = 0; sl < inputSentenceList.size(); sl++) {
             //List<String[]> sentenceTokens = inputSentenceList.get(sl);
             List<List<String>> sentenceTokens = inputSentenceList.get(sl);
@@ -113,7 +119,7 @@ public class UniversalDependency {
                 String elementDepTarget = "";
                 String elementEdge = "";
                 String elementDeps = "";
-                String elementSpaceAfter = "";
+                String elementMisc = "";
 
                 String elementNumber = "";
 
@@ -122,6 +128,14 @@ public class UniversalDependency {
                     //elementOrder = sentenceTokenArray[0].trim();
                     elementOrder = sentenceTokenArray.get(0).trim();
                     if (elementOrder.contains("-")) {
+                        multiWord = sentenceTokenArray.get(1).trim();
+                        List<String> multiRange = fastSplit(elementOrder, "-");
+                        //System.out.println(elementOrder);
+                        //System.out.println(multiRange.get(0));
+                        //System.out.println(multiRange.get(1));
+                        //System.out.println(multiRange.size());
+                        multiStart = multiRange.get(0);
+                        multiFinish = multiRange.get(1);
                         continue;
                     }
                     elementNumber = elementOrder;
@@ -156,7 +170,7 @@ public class UniversalDependency {
                     elementDeps = sentenceTokenArray.get(8).trim();
                 }
                 if (sentenceTokenArray.size() > 9) {
-                    elementSpaceAfter = sentenceTokenArray.get(9).trim();
+                    elementMisc = sentenceTokenArray.get(9).trim();
                 }
 
                 Element tokenElement = docOutput.createElement("token");
@@ -164,13 +178,21 @@ public class UniversalDependency {
                 tokenElement.setAttribute("order", elementOrder);
                 tokenElement.setAttribute("text", elementText);
                 tokenElement.setAttribute("token", elementToken);
-                //System.out.println(elementToken);
                 tokenElement.setAttribute("lemma", elementLemma);
                 tokenElement.setAttribute("pos", elementPos1);
                 tokenElement.setAttribute("xpos", elementPos2);
 
+                // Handling multiword tokens
+                if ((multiWord.length()>0) && (multiStart.length()>0) && (multiFinish.length()>0)) {
+                    tokenElement.setAttribute("_multiword", multiWord);
+                    tokenElement.setAttribute("_multistart", multiStart);
+                    tokenElement.setAttribute("_multifinish", multiFinish);
+                    multiWord = "";
+                    multiStart = "";
+                    multiFinish = "";
+                }
+
                 // Splitting categories
-                //String[] categoriesList = elementCategories.split("\\|");
                 List<String> categoriesList = fastSplit(elementCategories, "|");
 
                 //String[] categoriesList = elementCategories.split("\\|");
@@ -453,6 +475,7 @@ public class UniversalDependency {
 
                 Integer sentenceCounter = 0;
                 Integer tokenTotal = 0;
+                startNum = 0;
 
                 // Reading files from a given folder (we are going to merge them together in one treebank file)
                 List<String> conlluFiles = new ArrayList<>();
