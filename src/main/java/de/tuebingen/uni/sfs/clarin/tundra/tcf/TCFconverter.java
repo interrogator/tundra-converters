@@ -83,9 +83,7 @@ public class TCFconverter {
 	 * @throws IOException
 	 */
 	public TCFconverter(String fileNameIn,  
-			boolean constituencyTree) throws WLFormatException,
-			IOException, UnknownTokenException, MissingLayerException {
-            
+			boolean constituencyTree) throws IOException, UnknownTokenException, MissingLayerException {
 		curSent = new StringBuilder(); //output for sentence currently processed
 		sentenceID = 1; // attribute for sentences
 		num = 0; // attribute for cons and token elements
@@ -106,6 +104,7 @@ public class TCFconverter {
 
 		// Reading a corpus
 		// We need also handle treebanks from remote URLs
+		System.out.println(fileNameIn);
 		URL url = null;
 		try {
 			url = new URL(fileNameIn);
@@ -170,8 +169,7 @@ public class TCFconverter {
 	 * @throws IOException
 	 */
 	public TCFconverter(String fileNameIn, String fileNameOut, 
-			boolean constituencyTree) throws WLFormatException,
-			IOException, UnknownTokenException, MissingLayerException {
+			boolean constituencyTree) throws IOException, UnknownTokenException, MissingLayerException {
 
 		curSent = new StringBuilder(); //output for sentence currently processed
 		sentenceID = 1; // attribute for sentences
@@ -192,8 +190,22 @@ public class TCFconverter {
 		warnings = "";
 
 		//read corpus
-		FileInputStream fis = new FileInputStream(fileNameIn);
-		WLData wld = WLDObjector.read(fis);
+		//FileInputStream fis = new FileInputStream(fileNameIn);
+		//WLData wld = WLDObjector.read(fis);
+		// Reading a corpus
+		// We need also handle treebanks from remote URLs
+		System.out.println(fileNameIn);
+		URL url = null;
+		try {
+			url = new URL(fileNameIn);
+		} catch (MalformedURLException e) {
+			e.printStackTrace();
+		}
+		InputStream is = url.openStream();
+		//FileInputStream fis = new FileInputStream(fileNameIn);
+		WLData wld = WLDObjector.read(is);
+
+
 		TextCorpusStored tc = wld.getTextCorpus(); 
 
 		// get necessary annotation layers
