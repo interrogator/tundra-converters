@@ -84,6 +84,14 @@ public class TCFconverter {
 	 */
 	public TCFconverter(String fileNameIn,  
 			boolean constituencyTree) throws IOException, UnknownTokenException, MissingLayerException {
+
+		URL url = null;
+		try {
+			url = new URL(fileNameIn);
+		} catch (MalformedURLException e) {
+			e.printStackTrace();
+		}
+
 		curSent = new StringBuilder(); //output for sentence currently processed
 		sentenceID = 1; // attribute for sentences
 		num = 0; // attribute for cons and token elements
@@ -91,8 +99,9 @@ public class TCFconverter {
 		//getTextValue() 
 		oldInd = 0;
 		curInd = 0; // start index for indexOf in getTextValue()
-		out = new BufferedWriter(new OutputStreamWriter(System.out));
-		// hash map with ids of governing tokens (keys) and 
+		//out = new BufferedWriter(new OutputStreamWriter(System.out));
+		out = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(fileNameIn), "UTF-8"));
+		// hash map with ids of governing tokens (keys) and
 		// DepNodes of governed tokens (values)
 		dependencyHashMap = null; 
 		// hash map with order values of tokens (keys) and
@@ -105,12 +114,7 @@ public class TCFconverter {
 		// Reading a corpus
 		// We need also handle treebanks from remote URLs
 		System.out.println(fileNameIn);
-		URL url = null;
-		try {
-			url = new URL(fileNameIn);
-		} catch (MalformedURLException e) {
-			e.printStackTrace();
-		}
+
 		InputStream is = url.openStream();
 		//FileInputStream fis = new FileInputStream(fileNameIn);
 		WLData wld = WLDObjector.read(is);
