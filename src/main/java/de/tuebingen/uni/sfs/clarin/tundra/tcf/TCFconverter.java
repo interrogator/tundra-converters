@@ -20,23 +20,20 @@ package de.tuebingen.uni.sfs.clarin.tundra.tcf;
  * -- Valentin
  */
 
-import java.io.BufferedWriter;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.OutputStreamWriter;
+import eu.clarin.weblicht.wlfxb.io.WLDObjector;
+import eu.clarin.weblicht.wlfxb.io.WLFormatException;
+import eu.clarin.weblicht.wlfxb.tc.api.*;
+import eu.clarin.weblicht.wlfxb.tc.xb.*;
+import eu.clarin.weblicht.wlfxb.xb.WLData;
+
+import java.io.*;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.regex.Pattern;
-
-import eu.clarin.weblicht.wlfxb.io.*;
-import eu.clarin.weblicht.wlfxb.tc.api.*;
-import eu.clarin.weblicht.wlfxb.tc.xb.*;
-import eu.clarin.weblicht.wlfxb.xb.WLData;
-import eu.clarin.weblicht.wlfxb.tc.xb.LemmasLayerStored;
-import eu.clarin.weblicht.wlfxb.tc.xb.SentencesLayerStored;
-import java.io.FileOutputStream;
 
 public class TCFconverter {
 	private static final String HELP = 
@@ -107,9 +104,17 @@ public class TCFconverter {
 		lastTextValue = ""; //last text value found
 		warnings = "";
 
-		//read corpus
-		FileInputStream fis = new FileInputStream(fileNameIn);
-		WLData wld = WLDObjector.read(fis);
+		// Reading a corpus
+		// We need also handle treebanks from remote URLs
+		URL url = null;
+		try {
+			url = new URL(fileNameIn);
+		} catch (MalformedURLException e) {
+			e.printStackTrace();
+		}
+		InputStream is = url.openStream();
+		//FileInputStream fis = new FileInputStream(fileNameIn);
+		WLData wld = WLDObjector.read(is);
 		TextCorpusStored tc = wld.getTextCorpus(); 
 
 		// get necessary annotation layers

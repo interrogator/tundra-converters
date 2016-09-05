@@ -221,8 +221,6 @@ public class UniversalDependency {
                     }
                 }
 
-                //tokenElement.setAttribute("spaceafter", elementSpaceAfter);
-
                 // Splitting misc attributes
                 List<String> miscList = fastSplit(elementMisc, "|");
                 for (int ml = 0; ml < miscList.size(); ml++) {
