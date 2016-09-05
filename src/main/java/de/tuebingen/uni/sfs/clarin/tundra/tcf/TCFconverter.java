@@ -27,8 +27,6 @@ import eu.clarin.weblicht.wlfxb.tc.xb.*;
 import eu.clarin.weblicht.wlfxb.xb.WLData;
 
 import java.io.*;
-import java.net.MalformedURLException;
-import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -84,14 +82,6 @@ public class TCFconverter {
 	 */
 	public TCFconverter(String fileNameIn,  
 			boolean constituencyTree) throws IOException, UnknownTokenException, MissingLayerException {
-
-		URL url = null;
-		try {
-			url = new URL(fileNameIn);
-		} catch (MalformedURLException e) {
-			e.printStackTrace();
-		}
-
 		curSent = new StringBuilder(); //output for sentence currently processed
 		sentenceID = 1; // attribute for sentences
 		num = 0; // attribute for cons and token elements
@@ -99,8 +89,7 @@ public class TCFconverter {
 		//getTextValue() 
 		oldInd = 0;
 		curInd = 0; // start index for indexOf in getTextValue()
-		//out = new BufferedWriter(new OutputStreamWriter(System.out));
-		out = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(fileNameIn), "UTF-8"));
+		out = new BufferedWriter(new OutputStreamWriter(System.out));
 		// hash map with ids of governing tokens (keys) and
 		// DepNodes of governed tokens (values)
 		dependencyHashMap = null; 
@@ -115,18 +104,18 @@ public class TCFconverter {
 		// We need also handle treebanks from remote URLs
 		System.out.println(fileNameIn);
 
-		InputStream is = url.openStream();
-		//FileInputStream fis = new FileInputStream(fileNameIn);
-		WLData wld = WLDObjector.read(is);
+
+		FileInputStream fis = new FileInputStream(fileNameIn);
+		WLData wld = WLDObjector.read(fis);
 		TextCorpusStored tc = wld.getTextCorpus(); 
 
 		// get necessary annotation layers
-                TextLayerStored textLayer = tc.getTextLayer();
-                if (textLayer != null) {
-                    text = textLayer.getText();
-                } else {
-                    text = "";
-                }
+		TextLayerStored textLayer = tc.getTextLayer();
+		if (textLayer != null) {
+			text = textLayer.getText();
+		} else {
+			text = "";
+		}
 		ll = tc.getLemmasLayer();
 		ml = tc.getMorphologyLayer(); 
 		ptl = tc.getPosTagsLayer();  
@@ -194,22 +183,8 @@ public class TCFconverter {
 		warnings = "";
 
 		//read corpus
-		//FileInputStream fis = new FileInputStream(fileNameIn);
-		//WLData wld = WLDObjector.read(fis);
-		// Reading a corpus
-		// We need also handle treebanks from remote URLs
-		System.out.println(fileNameIn);
-		URL url = null;
-		try {
-			url = new URL(fileNameIn);
-		} catch (MalformedURLException e) {
-			e.printStackTrace();
-		}
-		InputStream is = url.openStream();
-		//FileInputStream fis = new FileInputStream(fileNameIn);
-		WLData wld = WLDObjector.read(is);
-
-
+		FileInputStream fis = new FileInputStream(fileNameIn);
+		WLData wld = WLDObjector.read(fis);
 		TextCorpusStored tc = wld.getTextCorpus(); 
 
 		// get necessary annotation layers
