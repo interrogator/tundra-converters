@@ -19,21 +19,40 @@
     </developers>
 
     <scm>
-        <url>https://dspin.sfs.uni-tuebingen.de/gitblit/summary/clarind!libraries!tundra-converters.git</url>
+        <url>https://arc.sfs.uni-tuebingen.de/summary/clarind!libraries!tundra-converters.git</url>
         <connection>
-            scm:git:https://dspin.sfs.uni-tuebingen.de/gitblit/git/clarind/libraries/tundra-converters.git
+            scm:git:https://arc.sfs.uni-tuebingen.de/r/clarind/libraries/tundra-converters.git
         </connection>
         <developerConnection>
-            scm:git:https://dspin.sfs.uni-tuebingen.de/gitblit/git/clarind/libraries/tundra-converters.git
+            scm:git:https://arc.sfs.uni-tuebingen.de/r/clarind/libraries/tundra-converters.git
         </developerConnection>
         <tag>HEAD</tag>
     </scm>
 
+    <repositories>
+      <repository>
+              <id>sfs-clarind-nexus</id>
+              <name>Internal Releases</name>
+              <url>http://nexus.weblicht.sfs.uni-tuebingen.de:5081/nexus/content/repositories/releases</url>
+          </repository>
+          <repository>
+              <id>sfs-clarind-nexus-snapshots</id>
+              <name>Internal Snapshots</name>
+              <url>http://nexus.weblicht.sfs.uni-tuebingen.de:5081/nexus/content/repositories/snapshots</url>
+          </repository>
+    </repositories>
+
     <distributionManagement>
         <repository>
-            <id>ssh-repository</id>
-            <url>scpexe://dspin/var/local/maven</url>
+            <id>sfs-clarind-nexus</id>
+            <name>Internal Releases</name>
+            <url>http://nexus.weblicht.sfs.uni-tuebingen.de:5081/nexus/content/repositories/releases</url>
         </repository>
+        <snapshotRepository>
+            <id>sfs-clarind-nexus-snapshot</id>
+            <name>Snapshot Releases</name>
+            <url>http://nexus.weblicht.sfs.uni-tuebingen.de:5081/nexus/content/repositories/snapshots</url>
+        </snapshotRepository>
     </distributionManagement>
 
     <properties>
