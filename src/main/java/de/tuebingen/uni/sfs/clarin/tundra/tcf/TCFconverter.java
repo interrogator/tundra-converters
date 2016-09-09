@@ -81,7 +81,7 @@ public class TCFconverter {
 	 * @throws IOException
 	 */
 	public TCFconverter(String fileNameIn,  
-			boolean constituencyTree) throws IOException, UnknownTokenException, MissingLayerException {
+			boolean constituencyTree) throws IOException, UnknownTokenException {
 		curSent = new StringBuilder(); //output for sentence currently processed
 		sentenceID = 1; // attribute for sentences
 		num = 0; // attribute for cons and token elements
@@ -101,10 +101,6 @@ public class TCFconverter {
 		warnings = "";
 
 		// Reading a corpus
-		// We need also handle treebanks from remote URLs
-		System.out.println(fileNameIn);
-
-
 		FileInputStream fis = new FileInputStream(fileNameIn);
 		WLData wld = WLDObjector.read(fis);
 		TextCorpusStored tc = wld.getTextCorpus(); 
@@ -117,43 +113,24 @@ public class TCFconverter {
 			text = "";
 		}
 		ll = tc.getLemmasLayer();
-		ml = tc.getMorphologyLayer(); 
-		ptl = tc.getPosTagsLayer();  
+		ml = tc.getMorphologyLayer();
+		ptl = tc.getPosTagsLayer();
 		nel = tc.getNamedEntitiesLayer();
-		//if (constituencyTree) {
-			cpl = tc.getConstituentParsingLayer();
-			if (cpl == null) {
-				//throw new MissingLayerException("The constituent parsing layer is missing!");
-
-				//cpl = null;
-				tl = tc.getTokensLayer();
-				/*if (tl == null) {
-					throw new MissingLayerException("The token layer is missing!");
-				}*/
-				dpl = tc.getDependencyParsingLayer();
-				if (dpl == null) {
-					sl = tc.getSentencesLayer();
-					/*if (sl == null) {
-						throw new MissingLayerException("The sentence layer is missing!");
-					}*/
-					createFakeDependencyTree();
-				}
-				createDependencyTree();
-
-
-
-
-
+		cpl = tc.getConstituentParsingLayer();
+		if (cpl == null) {
+			tl = tc.getTokensLayer();
+			dpl = tc.getDependencyParsingLayer();
+			if (dpl == null) {
+				sl = tc.getSentencesLayer();
+				createFakeDependencyTree();
 			} else {
-				tl = null;
-				dpl = null;
-				createConstituencyTree();
+				createDependencyTree();
 			}
-
-
-		//} else {
-
-		//}
+		} else {
+			tl = null;
+			dpl = null;
+			createConstituencyTree();
+		}
 	}
 
 
@@ -169,7 +146,7 @@ public class TCFconverter {
 	 * @throws IOException
 	 */
 	public TCFconverter(String fileNameIn, String fileNameOut, 
-			boolean constituencyTree) throws IOException, UnknownTokenException, MissingLayerException {
+			boolean constituencyTree) throws IOException, UnknownTokenException {
 
 		curSent = new StringBuilder(); //output for sentence currently processed
 		sentenceID = 1; // attribute for sentences
@@ -194,46 +171,6 @@ public class TCFconverter {
 		WLData wld = WLDObjector.read(fis);
 		TextCorpusStored tc = wld.getTextCorpus();
 		// get necessary annotation layers
-		/*TextLayerStored textLayer = tc.getTextLayer();
-		if (textLayer != null) {
-			text = textLayer.getText();
-		} else {
-			text = "";
-		}
-		ll = tc.getLemmasLayer();
-		ml = tc.getMorphologyLayer(); //!!skipping morph until I can debug
-		ptl = tc.getPosTagsLayer(); 
-                nel = tc.getNamedEntitiesLayer();
-		if (constituencyTree) {
-			cpl = tc.getConstituentParsingLayer();
-			if (cpl == null) {
-				throw new MissingLayerException(
-						"The constituent parsing layer is missing!");
-			}
-			tl = null;
-			dpl = null;
-			createConstituencyTree();
-		} else {
-			cpl = null;
-			tl = tc.getTokensLayer();
-			if (tl == null) {
-				throw new MissingLayerException("The token layer is missing!");
-			}
-			dpl = tc.getDependencyParsingLayer();
-			if (dpl == null) {
-				sl = tc.getSentencesLayer();
-				if (sl == null) {
-					throw new MissingLayerException("The sentence layer is missing!");
-				}
-				createFakeDependencyTree();
-				//				throw new MissingLayerException(
-				//						"The dependency parsing layer is missing!");
-			}
-			createDependencyTree();
-		}*/
-
-
-		// get necessary annotation layers
 		TextLayerStored textLayer = tc.getTextLayer();
 		if (textLayer != null) {
 			text = textLayer.getText();
@@ -244,40 +181,21 @@ public class TCFconverter {
 		ml = tc.getMorphologyLayer();
 		ptl = tc.getPosTagsLayer();
 		nel = tc.getNamedEntitiesLayer();
-		//if (constituencyTree) {
 		cpl = tc.getConstituentParsingLayer();
 		if (cpl == null) {
-			//throw new MissingLayerException("The constituent parsing layer is missing!");
-
-			//cpl = null;
 			tl = tc.getTokensLayer();
-				/*if (tl == null) {
-					throw new MissingLayerException("The token layer is missing!");
-				}*/
 			dpl = tc.getDependencyParsingLayer();
 			if (dpl == null) {
 				sl = tc.getSentencesLayer();
-					/*if (sl == null) {
-						throw new MissingLayerException("The sentence layer is missing!");
-					}*/
 				createFakeDependencyTree();
+			} else {
+				createDependencyTree();
 			}
-			createDependencyTree();
-
-
-
-
-
 		} else {
 			tl = null;
 			dpl = null;
 			createConstituencyTree();
 		}
-
-
-		//} else {
-
-		//}
 	}
 
 	/**
@@ -953,9 +871,9 @@ public class TCFconverter {
 			System.out.println(e.getMessage());
 		} catch (UnknownTokenException e) {
 			System.out.println(e.getMessage());
-		} catch (MissingLayerException e) {
+		}/* catch (MissingLayerException e) {
 			System.out.println(e.getMessage());
-		}
+		}*/
 
 
 	}
