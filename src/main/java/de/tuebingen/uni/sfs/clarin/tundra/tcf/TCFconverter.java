@@ -1,23 +1,12 @@
 package de.tuebingen.uni.sfs.clarin.tundra.tcf;
 
 /**
- * Course:      Text Technology
- * Assignment:  Semester Project
- * Author:      Tobias Kolditz
- * Description: TCFconverter
+ * The very first TCF to TüNDRA converter. It has survived many changes: fake trees (if there are no real ones), named
+ * entity highlighting, creating two treebanks for TCF with both constituency and dependency layers, etc.
  *
- * Honor Code:  I pledge that this program represents my own work.
- *              I received help from:
- *              
- *          	Chris Culy
- *              
- *              in designing and debugging my program.
- * 
- * I made some changes for morphology -- Scott
- * 
- * Changed to create a 'fake' dependency tree if dependency layer is missing 
- * Changed to include named entity tags and color highlighting from TCF in TundraXML
- * -- Valentin
+ * Initial author: Tobias Kolditz
+ * Contributor #1: Valentin Pickard
+ * Contributor #2: Alexandr Chernov
  */
 
 import eu.clarin.weblicht.wlfxb.io.WLDObjector;
@@ -34,14 +23,11 @@ import java.util.regex.Pattern;
 
 public class TCFconverter {
 	private static final String HELP = 
-        "The TCFconverter converts TCF to Scott Martens' format.\n" +
-        "Invocation: java -jar TCFconverter [OPTION] INPUT_FILE " +
-        "[OUTPUT_FILE]\nAvailable options:\n" +
-        "\t-c\tcreate a constituency tree, OR\n" +
-        "\t-d\tcreate a dependency tree\n" +
+        "The TCFconverter converts TCF to Scott Martens' format (TüNDRA XML format).\n" +
+        "Invocation: java -jar TCFconverter INPUT_FILE " +
+        "[OUTPUT_FILE_1 OUTPUT_FILE_2]\n" +
         "\n" +
-        "If no option is specified, " +
-        "a constituency tree is created by default.\n" +
+        "Converter finds parsing layers and creates a corresponding treebank (or two if both constituency and dependency layers are found)" +
         "If no output file is specified, the output is written to STDOUT.";
 
 	private ConstituentParsingLayerStored cpl;
@@ -61,7 +47,8 @@ public class TCFconverter {
 	private int curInd;
 	private int sentenceID;
 	private int num;
-	private BufferedWriter out;
+	private BufferedWriter out1;
+	private BufferedWriter out2;
 	private boolean checkVar;
 	private String lastTextValue;
 	private HashMap<String, ArrayList<DepNode>> dependencyHashMap;
@@ -76,12 +63,11 @@ public class TCFconverter {
 	 * second argument is <i>true</i>, a constituency tree is created, 
 	 * if it is <i>false</i>, a dependency tree is created instead.
 	 * @param fileNameIn name of the input file
-	 * @param constituencyTree <i>true</i> if a constituency tree shall be 
 	 * created, <i>false</i> if a dependency tree shall be created
 	 * @throws WLFormatException
 	 * @throws IOException
 	 */
-	public TCFconverter(String fileNameIn, boolean constituencyTree) throws IOException, UnknownTokenException {
+	public TCFconverter(String fileNameIn) throws IOException, UnknownTokenException {
 		curSent = new StringBuilder(); //output for sentence currently processed
 		sentenceID = 1; // attribute for sentences
 		num = 0; // attribute for cons and token elements
@@ -89,7 +75,8 @@ public class TCFconverter {
 		//getTextValue() 
 		oldInd = 0;
 		curInd = 0; // start index for indexOf in getTextValue()
-		out = new BufferedWriter(new OutputStreamWriter(System.out));
+		out1 = new BufferedWriter(new OutputStreamWriter(System.out));
+		out2 = new BufferedWriter(new OutputStreamWriter(System.out));
 		// hash map with ids of governing tokens (keys) and
 		// DepNodes of governed tokens (values)
 		dependencyHashMap = null; 
@@ -152,13 +139,12 @@ public class TCFconverter {
 	 * argument is <i>true</i>, a constituency tree is created, 
 	 * if it is <i>false</i>, a dependency tree is created instead.
 	 * @param fileNameIn name of the input file
-	 * @param fileNameOut name for the output file
-	 * @param constituencyTree <i>true</i> if a constituency tree shall be 
-	 * created, <i>false</i> if a dependency tree shall be created
+	 * @param fileNameOutCPL name for the output of constituency treebank
+	 * @param fileNameOutCPL name for the output of dependency treebank
 	 * @throws WLFormatException
 	 * @throws IOException
 	 */
-	public TCFconverter(String fileNameIn, String fileNameOut, boolean constituencyTree) throws IOException, UnknownTokenException {
+	public TCFconverter(String fileNameIn, String fileNameOutCPL, String fileNameOutDPL) throws IOException, UnknownTokenException {
 
 		curSent = new StringBuilder(); //output for sentence currently processed
 		sentenceID = 1; // attribute for sentences
@@ -167,8 +153,9 @@ public class TCFconverter {
 		//getTextValue() 
 		oldInd = 0;
 		curInd = 0; // start index for indexOf in getTextValue()
-		out = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(fileNameOut), "UTF-8"));
-		// hash map with ids of governing tokens (keys) and 
+		out1 = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(fileNameOutCPL), "UTF-8"));
+		out2 = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(fileNameOutDPL), "UTF-8"));
+		// hash map with ids of governing tokens (keys) and
 		// DepNodes of governed tokens (values)
 		dependencyHashMap = null; 
 		// hash map with order values of tokens (keys) and
@@ -228,8 +215,8 @@ public class TCFconverter {
 	 * @throws IOException
 	 */
 	private void createDependencyTree() throws IOException, UnknownTokenException {
-		out.write("<?xml version=\"1.0\"?>\n");
-		out.write("<corpus>\n");
+		out1.write("<?xml version=\"1.0\"?>\n");
+		out1.write("<corpus>\n");
         System.err.println("Making dependency treebank...");
 		for (int i = 0; i < dpl.size(); i++) {
 			createDependencyHashMap(i);
@@ -238,17 +225,17 @@ public class TCFconverter {
 			buildTree(root);
 			setStartFinishValues(root);
 			appendDependencySent(root, 0);
-			out.write(curSent.toString());
+			out1.write(curSent.toString());
 			sentenceID += 1;
 			curSent = new StringBuilder();
 		}
-		out.write("</corpus>");
-		out.close();
+		out1.write("</corpus>");
+		out1.close();
 	}
         
     private void createFakeDependencyTree() throws IOException, UnknownTokenException {
-        out.write("<?xml version=\"1.0\"?>\n");
-        out.write("<corpus>\n");
+        out1.write("<?xml version=\"1.0\"?>\n");
+        out1.write("<corpus>\n");
         System.err.println("Making fake dependency treebank...");
         for (int i = 0; i < sl.size(); i++) {
             createFakeDependencyList(i);
@@ -257,12 +244,12 @@ public class TCFconverter {
             buildFakeTree(root);
             setStartFinishValues(root);
             appendDependencySent(root, 0);
-            out.write(curSent.toString());
+            out1.write(curSent.toString());
             sentenceID += 1;
             curSent = new StringBuilder();
         }
-        out.write("</corpus>");
-        out.close();
+        out1.write("</corpus>");
+        out1.close();
     }
 
 	/**
@@ -497,19 +484,19 @@ public class TCFconverter {
 	 * @throws IOException
 	 */
 	private void createConstituencyTree() throws IOException, UnknownTokenException {
-		out.write("<?xml version=\"1.0\"?>\n");
-		out.write("<corpus>\n");
+		out2.write("<?xml version=\"1.0\"?>\n");
+		out2.write("<corpus>\n");
         System.err.println("Making constituency treebank...");
         lastOrder = 0;
 		for (int i=0; i < cpl.size(); i++) {
 			Constituent root = cpl.getParseRoot(i);
 			appendConstituencyElement(root, 0);
-			out.write(curSent.toString());
+			out2.write(curSent.toString());
 			curSent = new StringBuilder();
 			sentenceID += 1;
 		}
-		out.write("</corpus>");
-		out.close();
+		out2.write("</corpus>");
+		out2.close();
 	}
 
 	/**
@@ -834,13 +821,13 @@ public class TCFconverter {
 			System.err.println("Missing argument(s)!\n");
 			System.err.println(HELP);
 			return;
-		} 
-		if (args.length > 3) {
+		}
+		if (args.length > 4) {
 			System.err.println("Too many arguments!\n");
 			System.err.println(HELP);
 			return;
 		}
-		String[] names = new String[2];
+		String[] names = new String[3];
 		boolean consParse = true;
 		int namesIndex = 0;
 		for (int i = 0; i < args.length; i++) {
@@ -848,32 +835,18 @@ public class TCFconverter {
 				System.out.println(HELP);
 				return;
 			}
-			if (args[i].startsWith("-")) {				
-				for (int j = 1; j < args[i].length(); j++) {
-					char curChar = args[i].charAt(j);
-					if (curChar == 'c') {
-						consParse = true;
-					} else if (curChar == 'd') {
-						consParse = false;
-					} else if (curChar == 'h') {
-						System.out.print(HELP);
-						return;
-					} else {
-						System.err.println("Unknown command line switch!\n");
-						System.err.println(HELP);
-						return;
-					}
-				}
-			} else {
-				if (namesIndex < 2) {
-					names[namesIndex] = args[i];
-					namesIndex++;
-				} else {
-					System.err.println("Too many file name arguments!\n");
-					System.err.println(HELP);
-					return;
-				}
-			}
+			else {
+                if (args[i].startsWith("-")) {
+                    System.err.println("Unknown command line switch!\n");
+                    System.err.println(HELP);
+                    return;
+                }
+            }
+
+            if (namesIndex < 3) {
+                names[namesIndex] = args[i];
+                namesIndex++;
+            }
 		} 
 		if (namesIndex == 0) {
 			System.err.println("No input file specified!\n");
@@ -884,18 +857,16 @@ public class TCFconverter {
 			System.err.println("Creating XML...");
 			TCFconverter c;
 			if (namesIndex == 1) {
-				c = new TCFconverter(names[0], consParse);
-			} else {
-				c = new TCFconverter(
-						names[0], names[1], consParse);
+				c = new TCFconverter(names[0]);
+			}
+			else {
+				c = new TCFconverter(names[0], names[1], names[2]);
 			}
 			System.err.println("\nDone." + c.warnings);
 		} catch (IOException e) {
 			System.out.println(e.getMessage());
 		} catch (UnknownTokenException e) {
 			System.out.println(e.getMessage());
-		}/* catch (MissingLayerException e) {
-			System.out.println(e.getMessage());
-		}*/
+		}
 	}
 }
