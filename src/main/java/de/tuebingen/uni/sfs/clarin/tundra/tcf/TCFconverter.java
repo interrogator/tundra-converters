@@ -26,24 +26,23 @@ import eu.clarin.weblicht.wlfxb.tc.api.*;
 import eu.clarin.weblicht.wlfxb.tc.xb.*;
 import eu.clarin.weblicht.wlfxb.xb.WLData;
 
+import java.awt.*;
 import java.io.*;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
+import java.util.List;
 import java.util.regex.Pattern;
 
 public class TCFconverter {
 	private static final String HELP = 
-			"The TCFconverter converts TCF to Scott Martens' format.\n" +
-					"Invocation: java -jar TCFconverter [OPTION] INPUT_FILE " +
-					"[OUTPUT_FILE]\nAvailable options:\n" +
-					"\t-c\tcreate a constituency tree, OR\n" + 
-					"\t-d\tcreate a dependency tree\n" + 
-					"\n" + 
-					"If no option is specified, " +
-					"a constituency tree is created by default.\n" +
-					"If no output file is specified, the output is written to STDOUT.";
+        "The TCFconverter converts TCF to Scott Martens' format.\n" +
+        "Invocation: java -jar TCFconverter [OPTION] INPUT_FILE " +
+        "[OUTPUT_FILE]\nAvailable options:\n" +
+        "\t-c\tcreate a constituency tree, OR\n" +
+        "\t-d\tcreate a dependency tree\n" +
+        "\n" +
+        "If no option is specified, " +
+        "a constituency tree is created by default.\n" +
+        "If no output file is specified, the output is written to STDOUT.";
 
 	private ConstituentParsingLayerStored cpl;
 	private DependencyParsingLayerStored dpl;
@@ -51,8 +50,10 @@ public class TCFconverter {
 	private MorphologyLayerStored ml;
 	private PosTagsLayerStored ptl;
 	private TokensLayerStored tl;
-        private SentencesLayerStored sl;
-        private NamedEntitiesLayerStored nel;
+    private SentencesLayerStored sl;
+    private NamedEntitiesLayerStored nel;
+    private List<String> neCatColors;
+    private List<String> allNECats;
 
 	private StringBuilder curSent;
 	private String text;
@@ -64,9 +65,9 @@ public class TCFconverter {
 	private boolean checkVar;
 	private String lastTextValue;
 	private HashMap<String, ArrayList<DepNode>> dependencyHashMap;
-        private ArrayList<DepNode> fakeDependencyList;
+    private ArrayList<DepNode> fakeDependencyList;
 	private HashMap<Integer, String> textValues;
-        private int lastOrder;
+    private int lastOrder;
 
 	public String warnings;
 
@@ -116,6 +117,8 @@ public class TCFconverter {
 		ml = tc.getMorphologyLayer();
 		ptl = tc.getPosTagsLayer();
 		nel = tc.getNamedEntitiesLayer();
+        getAllNECategories();
+
 		cpl = tc.getConstituentParsingLayer();
 		if (cpl == null) {
 			tl = tc.getTokensLayer();
@@ -181,6 +184,8 @@ public class TCFconverter {
 		ml = tc.getMorphologyLayer();
 		ptl = tc.getPosTagsLayer();
 		nel = tc.getNamedEntitiesLayer();
+        getAllNECategories();
+
 		cpl = tc.getConstituentParsingLayer();
 		if (cpl == null) {
 			tl = tc.getTokensLayer();
@@ -297,22 +302,24 @@ public class TCFconverter {
 			if (ptl != null && ptl.getTag(t) != null) {
 				curSent.append(formatAttr("pos", ptl.getTag(t).getString()));
 			}
-                        if(nel != null){
-                                        writeNamedEntityInfo(t);
-                                    }
+			if(nel != null){
+				writeNamedEntityInfo(t);
+				//getAllNECategories();
+			}
 			if (ml != null && ml.getAnalysis(t) != null) {
 				Feature[] fs = ml.getAnalysis(t).getFeatures();
-                                Set<String> added = new HashSet<String>(); //to prevent morphology overloading
+				Set<String> added = new HashSet<String>(); //to prevent morphology overloading
 				for (int j = 0; j < fs.length; j++) {
-                                    String name = "morph" + fs[j].getName();
-                                    if (!added.contains(name)) {
-					name = name.replaceAll("[\\s<>\"'&]+", "");
-					curSent.append(formatAttr(name, 
-							fs[j].getValue()));
-                                        added.add(name);
-                                    } else {
-                                        System.err.println("Double morphological attribute '" + name + "' on token #" + Integer.toString(num));
-                                    }
+					String name = "morph" + fs[j].getName();
+					if (!added.contains(name)) {
+						name = name.replaceAll("[\\s<>\"'&]+", "");
+						curSent.append(formatAttr(name,
+						fs[j].getValue()));
+						added.add(name);
+					}
+					else {
+						System.err.println("Double morphological attribute '" + name + "' on token #" + Integer.toString(num));
+					}
 				}
 			}
 		}
@@ -615,108 +622,154 @@ public class TCFconverter {
 	 * @param c a Constituent from the tcf constituency parse
 	 * @param indentation the correct indentation for the current depth
 	 */
-	private void appendConstituencyTerm(Constituent c, String indentation) 
-			throws UnknownTokenException{
+	private void appendConstituencyTerm(Constituent c, String indentation) throws UnknownTokenException {
 		Token[] t = cpl.getTokens(c);
-                if (t.length == 0) {
-                    //trace terminal element
-                    curSent.append(indentation + "<term");
-                    curSent.append(formatAttr("num", Integer.toString(num)));                    
-                    curSent.append(formatAttr("trace", "true"));
-                    curSent.append(formatAttr("token", c.getCategory()));
-                    if (c.getEdge() != null) {
-                        curSent.append(String.format(" edge=\"%s\"", c.getEdge()));
-                    }
-                    String order = Integer.toString(lastOrder + 1);
-                    curSent.append(formatAttr("order", order));
-                    curSent.append(formatAttr("start", order));
-                    curSent.append(formatAttr("finish", order));
-                    curSent.append(formatAttr("text", " -" + c.getCategory() + "- "));
-                    curSent.append("/>\n");
-                    num += 1;
-                } else {
-                    for (int i = 0; i < t.length; i++) {
-                            curSent.append(indentation + "<term");
-                            curSent.append(formatAttr("num", Integer.toString(num)));
-                            if (t[i] != null) {
-                                    curSent.append(formatAttr("token", t[i].getString()));
-                                    if (ll != null && ll.getLemma(t[i]) != null) {
-                                            curSent.append(formatAttr(
-                                                            "lemma", ll.getLemma(t[i]).getString()));
-                                    }
-                                    if (ptl != null && ptl.getTag(t[i]) != null) {
-                                            curSent.append(formatAttr(
-                                                            "pos", ptl.getTag(t[i]).getString()));
-                                    }
-                                    if(nel != null){
-                                        writeNamedEntityInfo(t[i]);
-                                    }
-                                    t[i].getID();
-                            }
-                            // append morph attributes
-                            if (ml != null && ml.getAnalysis(t[i]) != null) {
-                                    Feature[] fs = ml.getAnalysis(t[i]).getFeatures();
-                                    Set<String> added = new HashSet<String>(); //to prevent morphology overloading
-                                    for (int j = 0; j < fs.length; j++) {
-                                            String name = "morph" + fs[j].getName();
-                                            if (!added.contains(name)) {
-                                                name = name.replaceAll("[\\s<>\"'&]+", "");
-                                                curSent.append(formatAttr(name, 
-                                                                fs[j].getValue()));
-                                                added.add(name);
-                                            } else {
-                                                System.err.println("Double morphological attribute '" + name + "' on token #" + Integer.toString(num));
-                                            }
-                                    }
-                            }
-                            if (c.getEdge() != null)
-                                    curSent.append(String.format(" edge=\"%s\"", c.getEdge()));
-                            String order = Integer.toString(t[i].getOrder());
-                            lastOrder = t[i].getOrder();
-                            curSent.append(formatAttr("order", order));
-                            curSent.append(formatAttr("start", order));
-                            curSent.append(formatAttr("finish", order));
-                            // find whitespace in the text
-                            String textValue = getTextValue(t[i].getString());
-                            curSent.append(formatAttr("text", textValue));
-                            curSent.append("/>\n");
-                            num += 1;
-                    }
-                }
+		if (t.length == 0) {
+			//trace terminal element
+			curSent.append(indentation + "<term");
+			curSent.append(formatAttr("num", Integer.toString(num)));
+			curSent.append(formatAttr("trace", "true"));
+			curSent.append(formatAttr("token", c.getCategory()));
+			if (c.getEdge() != null) {
+				curSent.append(String.format(" edge=\"%s\"", c.getEdge()));
+			}
+			String order = Integer.toString(lastOrder + 1);
+			curSent.append(formatAttr("order", order));
+			curSent.append(formatAttr("start", order));
+			curSent.append(formatAttr("finish", order));
+			curSent.append(formatAttr("text", " -" + c.getCategory() + "- "));
+			curSent.append("/>\n");
+			num += 1;
+		}
+		else {
+			for (int i = 0; i < t.length; i++) {
+				curSent.append(indentation + "<term");
+				curSent.append(formatAttr("num", Integer.toString(num)));
+				if (t[i] != null) {
+					curSent.append(formatAttr("token", t[i].getString()));
+					if (ll != null && ll.getLemma(t[i]) != null) {
+						curSent.append(formatAttr(
+						"lemma", ll.getLemma(t[i]).getString()));
+					}
+					if (ptl != null && ptl.getTag(t[i]) != null) {
+						curSent.append(formatAttr(
+						"pos", ptl.getTag(t[i]).getString()));
+					}
+					if(nel != null){
+						writeNamedEntityInfo(t[i]);
+						//getAllNECategories();
+					}
+					t[i].getID();
+				}
+				// append morph attributes
+				if (ml != null && ml.getAnalysis(t[i]) != null) {
+					Feature[] fs = ml.getAnalysis(t[i]).getFeatures();
+					Set<String> added = new HashSet<String>(); //to prevent morphology overloading
+					for (int j = 0; j < fs.length; j++) {
+						String name = "morph" + fs[j].getName();
+						if (!added.contains(name)) {
+							name = name.replaceAll("[\\s<>\"'&]+", "");
+							curSent.append(formatAttr(name,
+							fs[j].getValue()));
+							added.add(name);
+						}
+						else {
+							System.err.println("Double morphological attribute '" + name + "' on token #" + Integer.toString(num));
+						}
+					}
+				}
+				if (c.getEdge() != null)
+				curSent.append(String.format(" edge=\"%s\"", c.getEdge()));
+				String order = Integer.toString(t[i].getOrder());
+				lastOrder = t[i].getOrder();
+				curSent.append(formatAttr("order", order));
+				curSent.append(formatAttr("start", order));
+				curSent.append(formatAttr("finish", order));
+				// find whitespace in the text
+				String textValue = getTextValue(t[i].getString());
+				curSent.append(formatAttr("text", textValue));
+				curSent.append("/>\n");
+				num += 1;
+			}
+		}
 	}
-        /**
-         * Append named entity attribute and corresponding color attribute for a token 
-         * ( Call only if NamedEntityLayer is present )
-         * @param t the token being written
-         */
-        private void writeNamedEntityInfo(Token t){
-            if(nel.getEntity(t)!=null){
-                curSent.append(formatAttr("_ne", nel.getEntity(t).getType()));
-                // green
-                if(nel.getEntity(t).getType().equals("GPE")){
-                    curSent.append(formatAttr("_color", "#00ff80"));
-                }
-                // pink
-                else if(nel.getEntity(t).getType().equals("PER")){
-                    curSent.append(formatAttr("_color", "#ff80ff"));
-                }
-                // yellow
-                else if(nel.getEntity(t).getType().equals("LOC")){
-                    curSent.append(formatAttr("_color", "#ffff40"));
-                }
-                // blue
-                else if(nel.getEntity(t).getType().equals("ORG")){
-                    curSent.append(formatAttr("_color", "#0080ff"));
-                }
-                // orange
-                else if(nel.getEntity(t).getType().equals("OTH")){
-                    curSent.append(formatAttr("_color", "#ff8000"));
-                }
-                else{ //same color as 'other' category
-                    curSent.append(formatAttr("_color", "#ff8000"));
-                }               
-            }
+
+
+    /**
+     * Generates a random color and mixes it with the provided color
+     * @param constantColor color provided to be mixed with the random color
+     */
+    public String generateDistinctColor(Color constantColor) {
+        Random random = new Random();
+        int red = random.nextInt(256);
+        int green = random.nextInt(256);
+        int blue = random.nextInt(256);
+
+        if (constantColor != null) {
+            red = (red + constantColor.getRed())/2;
+            green = (green + constantColor.getGreen())/2;
+            blue = (blue + constantColor.getBlue())/2;
         }
+
+        Color color = new Color(red, green, blue); // RGB representation
+        String hex = String.format("#%02x%02x%02x", red, green, blue); // HEX representation
+
+        return hex;
+    }
+
+	private void getAllNECategories() {
+		allNECats = new ArrayList<>(); // list of unique NE categories
+        neCatColors = new ArrayList<>(); // list of NE category colors
+
+        allNECats.addAll(nel.getFoundTypes()); // adding all available NE categories from TCF
+
+        // Generated random distinct colors for each of the found categories
+        for (int nc = 0; nc < allNECats.size(); nc++) {
+            neCatColors.add(generateDistinctColor(new Color(255, 255, 255)));
+        }
+	}
+	/**
+	 * Append named entity attribute and corresponding color attribute for a token
+	 * ( Call only if NamedEntityLayer is present )
+	 * @param t the token being written
+	 */
+	private void writeNamedEntityInfo(Token t){
+		if(nel.getEntity(t)!=null){
+            String curCat = nel.getEntity(t).getType();
+		    curSent.append(formatAttr("_ne", curCat));
+
+            Integer curCatIndex = allNECats.indexOf(curCat);
+            if (curCatIndex > -1) {
+                curSent.append(formatAttr("_color", neCatColors.get(curCatIndex)));
+            }
+
+            /*
+            // green
+			if(nel.getEntity(t).getType().equals("GPE")){
+				curSent.append(formatAttr("_color", "#00ff80"));
+			}
+			// pink
+			else if(nel.getEntity(t).getType().equals("PER")){
+				curSent.append(formatAttr("_color", "#ff80ff"));
+			}
+			// yellow
+			else if(nel.getEntity(t).getType().equals("LOC")){
+				curSent.append(formatAttr("_color", "#ffff40"));
+			}
+			// blue
+			else if(nel.getEntity(t).getType().equals("ORG")){
+				curSent.append(formatAttr("_color", "#0080ff"));
+			}
+			// orange
+			else if(nel.getEntity(t).getType().equals("OTH")){
+				curSent.append(formatAttr("_color", "#ff8000"));
+			}
+			else{ //same color as 'other' category
+				curSent.append(formatAttr("_color", "#ff8000"));
+			}
+			*/
+		}
+	}
 
 	/**
 	 * Return the text value for <i>token</i>. (Works only if invoked 
