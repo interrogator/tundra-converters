@@ -184,7 +184,9 @@ public class TCFconverter {
 		ml = tc.getMorphologyLayer();
 		ptl = tc.getPosTagsLayer();
 		nel = tc.getNamedEntitiesLayer();
-        getAllNECategories();
+        if (nel != null) {
+            getAllNECategories();
+        }
 
 		cpl = tc.getConstituentParsingLayer();
 		if (cpl == null) {
@@ -304,7 +306,6 @@ public class TCFconverter {
 			}
 			if(nel != null){
 				writeNamedEntityInfo(t);
-				//getAllNECategories();
 			}
 			if (ml != null && ml.getAnalysis(t) != null) {
 				Feature[] fs = ml.getAnalysis(t).getFeatures();
@@ -657,7 +658,6 @@ public class TCFconverter {
 					}
 					if(nel != null){
 						writeNamedEntityInfo(t[i]);
-						//getAllNECategories();
 					}
 					t[i].getID();
 				}
@@ -721,11 +721,13 @@ public class TCFconverter {
 		allNECats = new ArrayList<>(); // list of unique NE categories
         neCatColors = new ArrayList<>(); // list of NE category colors
 
-        allNECats.addAll(nel.getFoundTypes()); // adding all available NE categories from TCF
+        if (nel != null) {
+            allNECats.addAll(nel.getFoundTypes()); // adding all available NE categories from TCF
 
-        // Generated random distinct colors for each of the found categories
-        for (int nc = 0; nc < allNECats.size(); nc++) {
-            neCatColors.add(generateDistinctColor(new Color(255, 255, 255)));
+            // Generated random distinct colors for each of the found categories
+            for (int nc = 0; nc < allNECats.size(); nc++) {
+                neCatColors.add(generateDistinctColor(new Color(255, 255, 255)));
+            }
         }
 	}
 	/**
