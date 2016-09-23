@@ -81,8 +81,7 @@ public class TCFconverter {
 	 * @throws WLFormatException
 	 * @throws IOException
 	 */
-	public TCFconverter(String fileNameIn,  
-			boolean constituencyTree) throws IOException, UnknownTokenException {
+	public TCFconverter(String fileNameIn, boolean constituencyTree) throws IOException, UnknownTokenException {
 		curSent = new StringBuilder(); //output for sentence currently processed
 		sentenceID = 1; // attribute for sentences
 		num = 0; // attribute for cons and token elements
@@ -117,23 +116,34 @@ public class TCFconverter {
 		ml = tc.getMorphologyLayer();
 		ptl = tc.getPosTagsLayer();
 		nel = tc.getNamedEntitiesLayer();
-        getAllNECategories();
+        if (nel != null) {
+            getAllNECategories();
+        }
 
-		cpl = tc.getConstituentParsingLayer();
-		if (cpl == null) {
-			tl = tc.getTokensLayer();
-			dpl = tc.getDependencyParsingLayer();
-			if (dpl == null) {
-				sl = tc.getSentencesLayer();
-				createFakeDependencyTree();
-			} else {
-				createDependencyTree();
-			}
-		} else {
-			tl = null;
-			dpl = null;
-			createConstituencyTree();
-		}
+        cpl = tc.getConstituentParsingLayer(); // Constituency tree
+        dpl = tc.getDependencyParsingLayer(); // Dependency tree
+        tl = tc.getTokensLayer(); // Tokens
+
+        if (cpl == null) {
+
+            if (dpl == null) {
+                sl = tc.getSentencesLayer();
+                createFakeDependencyTree();
+            } else {
+                createDependencyTree();
+            }
+        }
+        else {
+            if ((cpl != null) && (dpl != null)) {
+                createDependencyTree();
+                createConstituencyTree();
+            }
+            else {
+                tl = null;
+                dpl = null;
+                createConstituencyTree();
+            }
+        }
 	}
 
 
@@ -148,8 +158,7 @@ public class TCFconverter {
 	 * @throws WLFormatException
 	 * @throws IOException
 	 */
-	public TCFconverter(String fileNameIn, String fileNameOut, 
-			boolean constituencyTree) throws IOException, UnknownTokenException {
+	public TCFconverter(String fileNameIn, String fileNameOut, boolean constituencyTree) throws IOException, UnknownTokenException {
 
 		curSent = new StringBuilder(); //output for sentence currently processed
 		sentenceID = 1; // attribute for sentences
@@ -188,20 +197,29 @@ public class TCFconverter {
             getAllNECategories();
         }
 
-		cpl = tc.getConstituentParsingLayer();
+		cpl = tc.getConstituentParsingLayer(); // Constituency tree
+        dpl = tc.getDependencyParsingLayer(); // Dependency tree
+        tl = tc.getTokensLayer(); // Tokens
+
 		if (cpl == null) {
-			tl = tc.getTokensLayer();
-			dpl = tc.getDependencyParsingLayer();
+
 			if (dpl == null) {
 				sl = tc.getSentencesLayer();
 				createFakeDependencyTree();
 			} else {
 				createDependencyTree();
 			}
-		} else {
-			tl = null;
-			dpl = null;
-			createConstituencyTree();
+		}
+		else {
+		    if ((cpl != null) && (dpl != null)) {
+                createDependencyTree();
+                createConstituencyTree();
+            }
+            else {
+                tl = null;
+                dpl = null;
+                createConstituencyTree();
+            }
 		}
 	}
 
@@ -209,11 +227,10 @@ public class TCFconverter {
 	 * Create dependency tree output.
 	 * @throws IOException
 	 */
-	private void createDependencyTree() 
-			throws IOException, UnknownTokenException {
+	private void createDependencyTree() throws IOException, UnknownTokenException {
 		out.write("<?xml version=\"1.0\"?>\n");
 		out.write("<corpus>\n");
-                //System.err.println("Making dependency treebank...");
+        System.err.println("Making dependency treebank...");
 		for (int i = 0; i < dpl.size(); i++) {
 			createDependencyHashMap(i);
 			DepNode root = new DepNode();
@@ -229,34 +246,31 @@ public class TCFconverter {
 		out.close();
 	}
         
-        private void createFakeDependencyTree()
-                throws IOException, UnknownTokenException {
-            out.write("<?xml version=\"1.0\"?>\n");
-		out.write("<corpus>\n");
-                //System.err.println("Making dependency treebank...");
-		for (int i = 0; i < sl.size(); i++) {
-			createFakeDependencyList(i);
-			DepNode root = new DepNode();
-			root.setId("ROOT");
-			buildFakeTree(root);
-			setStartFinishValues(root);
-			appendDependencySent(root, 0);
-			out.write(curSent.toString());
-			sentenceID += 1;
-			curSent = new StringBuilder();
-		}
-		out.write("</corpus>");
-		out.close();
-            
+    private void createFakeDependencyTree() throws IOException, UnknownTokenException {
+        out.write("<?xml version=\"1.0\"?>\n");
+        out.write("<corpus>\n");
+        System.err.println("Making fake dependency treebank...");
+        for (int i = 0; i < sl.size(); i++) {
+            createFakeDependencyList(i);
+            DepNode root = new DepNode();
+            root.setId("ROOT");
+            buildFakeTree(root);
+            setStartFinishValues(root);
+            appendDependencySent(root, 0);
+            out.write(curSent.toString());
+            sentenceID += 1;
+            curSent = new StringBuilder();
         }
+        out.write("</corpus>");
+        out.close();
+    }
 
 	/**
 	 * Append a dependency sent element to curSent.
 	 * @param root the root of the DepNode tree for this sentence
 	 * @param level the depth in the tree (used for correct indentation)
 	 */
-	private void appendDependencySent(DepNode root, int level)
-			throws UnknownTokenException {
+	private void appendDependencySent(DepNode root, int level) throws UnknownTokenException {
 		textValues = new HashMap<Integer, String>();
 		for (int i = root.getStart(); i <= root.getFinish(); i++) {
 			textValues.put(i, getTextValue(tl.getToken(i).getString()));
@@ -358,14 +372,14 @@ public class TCFconverter {
 		}
 	}
         
-        /**
+    /**
 	 * Build a DepNode tree from the current <i>fakeDependencyList</i>.
 	 * @param node start node - the artificial root node
 	 */
-        private void buildFakeTree(DepNode node) {
-		for(DepNode dn : fakeDependencyList){
-                    node.addChild(dn);
-                }
+    private void buildFakeTree(DepNode node) {
+        for(DepNode dn : fakeDependencyList){
+            node.addChild(dn);
+        }
 	}
 
 	/**
@@ -405,24 +419,24 @@ public class TCFconverter {
 			return rvalNonLeaf;
 		}
 	}
-        /**
+    /**
 	 * Create the fake dependency list for the sentence at 
 	 * <i>sentIndex</i>.
 	 * @param sentIndex index of the sentence
 	 */
-        private void createFakeDependencyList(int sentIndex){
-            fakeDependencyList = new ArrayList<DepNode>();
-            Token[] st = sl.getTokens(sl.getSentence(sentIndex));            
-            for(Token t : st){               
-                DepNode node = new DepNode(t);
-                Token data = node.getData();
-		if (data != null) {
-			node.setId(data.getID());
-			node.setOrder(data.getOrder());
-		}               
-                fakeDependencyList.add(node);               
-            }            
+    private void createFakeDependencyList(int sentIndex){
+        fakeDependencyList = new ArrayList<DepNode>();
+        Token[] st = sl.getTokens(sl.getSentence(sentIndex));
+        for(Token t : st) {
+            DepNode node = new DepNode(t);
+            Token data = node.getData();
+            if (data != null) {
+                node.setId(data.getID());
+                node.setOrder(data.getOrder());
+            }
+            fakeDependencyList.add(node);
         }
+    }
 
 	/**
 	 * Create the dependency hash map for the dependency parse at 
@@ -462,8 +476,7 @@ public class TCFconverter {
 							value.add(new DepNode(dt[j], dep[i].getFunction()));
 							dependencyHashMap.put(key, value);
 						} else {
-							dependencyHashMap.get(key).add(new DepNode(dt[j], 
-									dep[i].getFunction()));
+							dependencyHashMap.get(key).add(new DepNode(dt[j], dep[i].getFunction()));
 						}
 					}
 				}
@@ -483,12 +496,11 @@ public class TCFconverter {
 	 * Create constituency tree output.
 	 * @throws IOException
 	 */
-	private void createConstituencyTree() 
-			throws IOException, UnknownTokenException {
+	private void createConstituencyTree() throws IOException, UnknownTokenException {
 		out.write("<?xml version=\"1.0\"?>\n");
 		out.write("<corpus>\n");
-                //System.err.println("Making constituency treebank...");
-                lastOrder = 0;
+        System.err.println("Making constituency treebank...");
+        lastOrder = 0;
 		for (int i=0; i < cpl.size(); i++) {
 			Constituent root = cpl.getParseRoot(i);
 			appendConstituencyElement(root, 0);
@@ -506,30 +518,19 @@ public class TCFconverter {
 	 * @param c a Constituent from the tcf constituency parse
 	 * @param level the current depth in the tree
 	 */
-	private void appendConstituencyElement(Constituent c, int level) 
-			throws UnknownTokenException{
+	private void appendConstituencyElement(Constituent c, int level) throws UnknownTokenException{
 		if (c == null) {
 			return;
 		}
 		String indentation = indent(level);
 		Constituent[] children = c.getChildren();
-                if (level == 0) {
-                    appendConstituencySent(c, indentation, children, level);
-                } else if (children == null) {
-                    appendConstituencyTerm(c, indentation);
-                } else {
-                    appendConstituencyCons(c, indentation, children, level);
-                }
-                
-//		if (children == null) {
-//			appendConstituencyTerm(c, indentation);
-//		} else {
-//			if (level == 0) {
-//				appendConstituencySent(c, indentation, children, level);
-//			} else {
-//				appendConstituencyCons(c, indentation, children, level);
-//			}
-//		}
+        if (level == 0) {
+            appendConstituencySent(c, indentation, children, level);
+        } else if (children == null) {
+            appendConstituencyTerm(c, indentation);
+        } else {
+            appendConstituencyCons(c, indentation, children, level);
+        }
 	}
 
 	/**
@@ -539,34 +540,32 @@ public class TCFconverter {
 	 * @param children the children of <i>c</i>
 	 * @param level the current depth in the tree 
 	 */
-	private void appendConstituencyCons(Constituent c, 
-			String indentation, Constituent[] children, int level) 
-					throws UnknownTokenException {
-                //added to censor traces until I can make a fix
-                if ((cpl.getTokens(c) == null) || (cpl.getTokens(c).length == 0)) {
-                    return;
-                }
+	private void appendConstituencyCons(Constituent c, String indentation, Constituent[] children, int level) throws UnknownTokenException {
+        //added to censor traces until I can make a fix
+        if ((cpl.getTokens(c) == null) || (cpl.getTokens(c).length == 0)) {
+            return;
+        }
 		curSent.append(indentation + "<cons");
 		curSent.append(formatAttr("num", Integer.toString(num)));
-		if (c.getCategory() != null)
-			curSent.append(String.format(" cat=\"%s\"", c.getCategory()));
-		if (c.getEdge() != null)
-			curSent.append(String.format(" edge=\"%s\"", c.getEdge()));
+		if (c.getCategory() != null) {
+            curSent.append(String.format(" cat=\"%s\"", c.getCategory()));
+        }
+		if (c.getEdge() != null) {
+            curSent.append(String.format(" edge=\"%s\"", c.getEdge()));
+        }
 		if (cpl.getTokens(c) != null) {
-                        if (cpl.getTokens(c).length == 0) {
-                            //empty constituent means trace element!!
-                            //word order is 1 + last token or 0 if no last token
-                            curSent.append(formatAttr("trace", "true"));
-                            curSent.append(formatAttr("start", Integer.toString(lastOrder + 1)));
-                            curSent.append(formatAttr("finish", Integer.toString(lastOrder + 1)));
-                        } else {
-                            //order value of the first token in the constituent
-                            curSent.append(formatAttr("start", Integer.toString(
-                                            cpl.getTokens(c)[0].getOrder())));
-                            //order value of the last token in the constituent
-                            curSent.append(formatAttr("finish", Integer.toString(
-                                            cpl.getTokens(c)[cpl.getTokens(c).length - 1].getOrder())));
-                        }
+            if (cpl.getTokens(c).length == 0) {
+                //empty constituent means trace element!!
+                //word order is 1 + last token or 0 if no last token
+                curSent.append(formatAttr("trace", "true"));
+                curSent.append(formatAttr("start", Integer.toString(lastOrder + 1)));
+                curSent.append(formatAttr("finish", Integer.toString(lastOrder + 1)));
+            } else {
+                //order value of the first token in the constituent
+                curSent.append(formatAttr("start", Integer.toString(cpl.getTokens(c)[0].getOrder())));
+                //order value of the last token in the constituent
+                curSent.append(formatAttr("finish", Integer.toString(cpl.getTokens(c)[cpl.getTokens(c).length - 1].getOrder())));
+            }
 		}
 		curSent.append(">\n");
 		num += 1;
@@ -583,10 +582,7 @@ public class TCFconverter {
 	 * @param children the children of <i>c</i>
 	 * @param level the current depth in the tree 
 	 */
-	private void appendConstituencySent(Constituent c, String indentation, 
-			Constituent[] children, int level) 
-					throws UnknownTokenException {
-                //System.err.println("sentenceID=" + sentenceID);
+	private void appendConstituencySent(Constituent c, String indentation, Constituent[] children, int level) throws UnknownTokenException {
 		curSent.append(indentation + "<sent");
 		curSent.append(formatAttr("id", "st" + sentenceID));
 		curSent.append(">\n");
@@ -594,26 +590,25 @@ public class TCFconverter {
 		curSent.append(indent(level+1) + "<cons");
 		curSent.append(formatAttr("num", Integer.toString(num)));
 		num += 1;
-		if (c.getCategory() != null)
-			curSent.append(String.format(" cat=\"%s\"", c.getCategory()));
-		if (c.getEdge() != null)
-			curSent.append(String.format(" edge=\"%s\"", c.getEdge()));
+		if (c.getCategory() != null) {
+            curSent.append(String.format(" cat=\"%s\"", c.getCategory()));
+        }
+		if (c.getEdge() != null) {
+            curSent.append(String.format(" edge=\"%s\"", c.getEdge()));
+        }
 		if ((cpl.getTokens(c) != null) && (cpl.getTokens(c).length > 0)) {
 			//order value of the first token in the constituent
-			curSent.append(formatAttr("start", Integer.toString(
-					cpl.getTokens(c)[0].getOrder())));
+			curSent.append(formatAttr("start", Integer.toString(cpl.getTokens(c)[0].getOrder())));
 			//order value of the last token in the constituent
-			curSent.append(formatAttr("finish", Integer.toString(
-					cpl.getTokens(c)[cpl.getTokens(c).length - 1].getOrder())));
+			curSent.append(formatAttr("finish", Integer.toString(cpl.getTokens(c)[cpl.getTokens(c).length - 1].getOrder())));
 		}
-                curSent.append(formatAttr("_root", "true"));
+        curSent.append(formatAttr("_root", "true"));
 		curSent.append(">\n");
-
-                if (children != null) {
-                    for (int i = 0; i < children.length; i++) {
-                        appendConstituencyElement(children[i], level+2);
-                    }
-                }
+        if (children != null) {
+            for (int i = 0; i < children.length; i++) {
+                appendConstituencyElement(children[i], level+2);
+            }
+        }
 		curSent.append(indent(level+1) + "</cons>\n");
 		curSent.append(indentation + "</sent>\n");
 	}
@@ -744,32 +739,6 @@ public class TCFconverter {
             if (curCatIndex > -1) {
                 curSent.append(formatAttr("_color", neCatColors.get(curCatIndex)));
             }
-
-            /*
-            // green
-			if(nel.getEntity(t).getType().equals("GPE")){
-				curSent.append(formatAttr("_color", "#00ff80"));
-			}
-			// pink
-			else if(nel.getEntity(t).getType().equals("PER")){
-				curSent.append(formatAttr("_color", "#ff80ff"));
-			}
-			// yellow
-			else if(nel.getEntity(t).getType().equals("LOC")){
-				curSent.append(formatAttr("_color", "#ffff40"));
-			}
-			// blue
-			else if(nel.getEntity(t).getType().equals("ORG")){
-				curSent.append(formatAttr("_color", "#0080ff"));
-			}
-			// orange
-			else if(nel.getEntity(t).getType().equals("OTH")){
-				curSent.append(formatAttr("_color", "#ff8000"));
-			}
-			else{ //same color as 'other' category
-				curSent.append(formatAttr("_color", "#ff8000"));
-			}
-			*/
 		}
 	}
 
@@ -787,8 +756,7 @@ public class TCFconverter {
 					"\nWarning: The token '%s' was not found in the text layer", 
 					token);
 		} else if (checkVar) {
-			int nrOfInterveningWords = 
-					text.substring(oldInd, curInd).split("\\s+").length;
+			int nrOfInterveningWords = text.substring(oldInd, curInd).split("\\s+").length;
 			if (nrOfInterveningWords > 3) {
 				checkVar = false;
 				warnings += String.format(
@@ -929,7 +897,5 @@ public class TCFconverter {
 		}/* catch (MissingLayerException e) {
 			System.out.println(e.getMessage());
 		}*/
-
-
 	}
 }
