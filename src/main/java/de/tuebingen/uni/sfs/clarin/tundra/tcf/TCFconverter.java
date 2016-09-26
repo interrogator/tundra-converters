@@ -123,6 +123,10 @@ public class TCFconverter {
         else {
             if ((cpl != null) && (dpl != null)) {
                 createDependencyTree();
+				sentenceID = 1;
+				num = 0;
+				oldInd = 0;
+				curInd = 0;
                 createConstituencyTree();
             }
             else {
@@ -200,6 +204,10 @@ public class TCFconverter {
 		else {
 		    if ((cpl != null) && (dpl != null)) {
                 createDependencyTree();
+				sentenceID = 1;
+				num = 0;
+				oldInd = 0;
+				curInd = 0;
                 createConstituencyTree();
             }
             else {
