@@ -252,6 +252,7 @@ public class TCFconverter {
             buildFakeTree(root);
             setStartFinishValues(root);
             appendDependencySent(root, 0);
+            curSent.append(formatAttr("_fake", "true"));
             out1.write(curSent.toString());
             sentenceID += 1;
             curSent = new StringBuilder();
@@ -280,8 +281,8 @@ public class TCFconverter {
 		num += 1;
 		curSent.append(formatAttr("start", Integer.toString(root.getStart())));
 		curSent.append(formatAttr("finish", Integer.toString(root.getFinish())));
-                //added to deal with root bug in 7.2 
-                curSent.append(formatAttr("_root", "true"));
+        //added to deal with root bug in 7.2
+        curSent.append(formatAttr("_root", "true"));
 		curSent.append(">\n");
 
 		for (DepNode dp: root.getChildren()) {
