@@ -232,7 +232,7 @@ public class TCFconverter {
 			root.setId("ROOT");		
 			buildTree(root);
 			setStartFinishValues(root);
-			appendDependencySent(root, 0);
+			appendDependencySent(root, 0, false);
 			out1.write(curSent.toString());
 			sentenceID += 1;
 			curSent = new StringBuilder();
@@ -251,8 +251,7 @@ public class TCFconverter {
             root.setId("ROOT");
             buildFakeTree(root);
             setStartFinishValues(root);
-            appendDependencySent(root, 0);
-            curSent.append(formatAttr("_fake", "true"));
+            appendDependencySent(root, 0, true);
             out1.write(curSent.toString());
             sentenceID += 1;
             curSent = new StringBuilder();
@@ -266,7 +265,7 @@ public class TCFconverter {
 	 * @param root the root of the DepNode tree for this sentence
 	 * @param level the depth in the tree (used for correct indentation)
 	 */
-	private void appendDependencySent(DepNode root, int level) throws UnknownTokenException {
+	private void appendDependencySent(DepNode root, int level, boolean isFake) throws UnknownTokenException {
 		textValues = new HashMap<Integer, String>();
 		for (int i = root.getStart(); i <= root.getFinish(); i++) {
 			textValues.put(i, getTextValue(tl.getToken(i).getString()));
@@ -283,6 +282,9 @@ public class TCFconverter {
 		curSent.append(formatAttr("finish", Integer.toString(root.getFinish())));
         //added to deal with root bug in 7.2
         curSent.append(formatAttr("_root", "true"));
+        if (isFake == true) {
+            curSent.append(formatAttr("_fake", "true"));
+        }
 		curSent.append(">\n");
 
 		for (DepNode dp: root.getChildren()) {
